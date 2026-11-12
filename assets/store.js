@@ -47,6 +47,23 @@
     if (!r.ok) { const e = new Error(j.error || r.status); e.status = r.status; throw e; }
     return j;
   }
+  /* Отправка строго по очереди и с повтором.
+     По очереди: функция читает и перезаписывает один файл заказов целиком, и одновременные записи затирали бы
+     друг друга (статус «отправлено» терялся из-за записи журнала, ушедшей в ту же секунду).
+     С повтором: сеть может оборваться, запрос повторяем до 6 раз с паузой. */
+  let queue = Promise.resolve();
+  function push(body, id) {
+    hold(id, 1);
+    const job = queue.then(async () => {
+      for (let i = 0; i < 6; i++) {
+        try { await api("POST", null, body); return true; }
+        catch (e) { if (e.status === 409) return true; if (e.status && e.status < 500) return false; await new Promise((r) => setTimeout(r, 2000 * (i + 1))); }
+      }
+      return false;
+    }).finally(() => hold(id, -1));
+    queue = job.catch(() => false);
+    return job;
+  }
   const hold = (id, d) => { const n = (pending.get(String(id)) || 0) + d; n > 0 ? pending.set(String(id), n) : pending.delete(String(id)); };
 
   async function sync() {
@@ -68,7 +85,11 @@
         for (const id of new Set([...own, ...watched])) {
           if (pending.has(id)) continue;
           const r = await api("GET", { action: "get", id });
-          if (!r.order) continue;
+          if (!r.order) {   // облако заказа не видит: если он наш, дошлём (первая отправка могла оборваться)
+            const mine = s.orders.find((o) => String(o.id) === id);
+            if (mine) push({ action: "add", order: mine }, id);
+            continue;
+          }
           const i = s.orders.findIndex((o) => String(o.id) === id);
           const before = JSON.stringify([s.orders[i], s.over[id]]);
           if (i < 0) s.orders.unshift(r.order); else s.orders[i] = r.order;
@@ -96,14 +117,14 @@
     get(id) { return this.all().find((o) => String(o.id) === String(id)); },
     add(o) {
       const s = read(); s.orders.unshift(o); write(s); emit();
-      if (CLOUD) { hold(o.id, 1); api("POST", null, { action: "add", order: o }).catch(() => {}).finally(() => hold(o.id, -1)); }
+      if (CLOUD) push({ action: "add", order: o }, o.id);
       return o;
     },
     /* всё, что меняют поверх заказа (решения оператора, статус, журнал), лежит отдельно в over[id] */
     patch(id, p) {
       const s = read(); s.over[id] = Object.assign(s.over[id] || {}, p);
       write(s); emit();
-      if (CLOUD) { hold(id, 1); api("POST", null, { action: "patch", id: String(id), p }).catch(() => {}).finally(() => hold(id, -1)); }
+      if (CLOUD) push({ action: "patch", id: String(id), p }, id);
     },
     over(id) { return read().over[id] || {}; },
     phase,
