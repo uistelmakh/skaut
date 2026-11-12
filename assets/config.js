@@ -54,3 +54,7 @@ window.KITS = [
   { key: "orange", title: "Оранжевая", hex: "#F26A1B" },
   { key: "claret", title: "Бордовая", hex: "#7A1430" },
 ];
+
+/* Облачная функция заказов (Yandex Cloud Functions, исходник в proto/cloud/orders). Работает на сайте
+   uistelmakh.github.io; локально включается через localStorage["scout.cloud"] = "1". Пустая строка — только браузер. */
+window.ORDERS_API = "https://functions.yandexcloud.net/d4emb3fkt70rfn5ki4fq";

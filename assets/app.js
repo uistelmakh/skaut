@@ -457,6 +457,7 @@
   }
   function status(id) {
     const o = findOrder(id);
+    if (!o && S.cloud && S.online() === null) return `<div class="wrap st"><div class="st-head"><p class="cap">Заказ №${esc(String(id || "").slice(0, 12))}</p><h1 class="d2">Ищем заказ</h1><p class="lead">Секунду, загружаем статус.</p></div></div>`;
     if (!o) return `<div class="wrap st"><div class="st-refuse">
         <h1 class="d2">Заказ №${esc(String(id || "").slice(0, 12))} не нашли</h1>
         <p class="lead">Проверь ссылку из сообщения. Если заказ был, напиши нам в Telegram: найдём по нику.</p>
@@ -505,6 +506,7 @@
   }
   let stopStatus = null;
   function bindStatus(id) {
+    S.watch?.(id);   // в облаке догружаем заказ, открытый по ссылке из другого браузера
     const tick = () => { if (location.hash.includes(`status/${id}`)) { const html = status(id); if (view.dataset.sig !== html) { view.dataset.sig = html; view.innerHTML = html; view.classList.add("go-in", "settled"); bindStatusDemo(id); } } };
     view.dataset.sig = view.innerHTML;
     bindStatusDemo(id);
@@ -590,7 +592,7 @@
     pin.addEventListener("input", () => { err.hidden = true; pin.classList.remove("bad"); });
     $("#gate-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (await pinOk(pin.value.trim())) { gateOk = true; try { sessionStorage.setItem(GATE, "1"); } catch { /* помним до перезагрузки */ } mount(); return; }
+      if (await pinOk(pin.value.trim())) { gateOk = true; try { sessionStorage.setItem(GATE, "1"); sessionStorage.setItem("scout.admin.key", pin.value.trim()); } catch { /* помним до перезагрузки */ } S.sync?.(); mount(); return; }
       err.hidden = false; pin.classList.add("bad"); pin.select();
     });
   }

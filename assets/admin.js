@@ -45,10 +45,12 @@
   }
 
   /* ---------- сборка заказов: демо + заказы из формы + действия оператора ---------- */
-  function fromStore(o) {
+  function fromStore(raw) {
+    /* заказ из облака может прийти неполным: подставляем пустые значения, чтобы очередь не падала */
+    const o = { url: "", number: "", kit: "blue", team: "", howto: "", period: "", tg: "", created: Date.now(), ...raw };
     const ph = S.phase(o), real = o.real === "game";
     const base = {
-      id: o.id, fresh: true, client: { name: "Новый клиент", tg: o.tg }, url: o.url.replace(/^https?:\/\/(www\.)?/, ""),
+      id: o.id, fresh: true, client: { name: "Новый клиент", tg: o.tg }, url: String(o.url).replace(/^https?:\/\/(www\.)?/, ""),
       number: o.number, kit: o.kit, team: o.team, howto: o.howto, period: o.period, who: o.who,
       league: real ? "СХЛ" : "", home: real ? "РМАТ" : o.team, away: real ? "КГУ" : "соперник", date: real ? "27.01" : "сегодня",
       created: o.created, due: dueAt(o.created), opSec: o.opSec || 0, real: real ? "game" : "",
