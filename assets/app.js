@@ -556,6 +556,45 @@
   const TITLES = { home: "все смены из трансляции", result: `№${O.number} ${O.team}, ${T.toi} на льду`, cabinet: "мои игры", order: "получить смены", status: "статус заказа", privacy: "данные", terms: "условия", none: "страницы нет" };
   let jump = null;
 
+  /* ---------- вход в админку по коду ----------
+     Сервера нет, поэтому это шторка, а не защита: код проверяется в браузере, файлы админки лежат открыто.
+     Храним не сам код, а его хэш. Новый код: python3 -c "import hashlib; print(hashlib.sha256(b'КОД').hexdigest())".
+     Без кода скрипты и демо-заказы админки не грузятся. Вход помнится до закрытия вкладки. */
+  const ADMIN_PIN_SHA256 = "9af15b336e6a9619928537df30b2e6a2376569fcf9d7e773eccede65606529a0";
+  const ADMIN_PIN_FNV = 0xb5edd2d5;          // запасной хэш для адресов без https (телефон в той же сети Wi-Fi)
+  const GATE = "scout.admin.ok";
+  let gateOk = false;
+  const adminOk = () => { if (gateOk) return true; try { return sessionStorage.getItem(GATE) === "1"; } catch { return false; } };
+  async function pinOk(pin) {
+    if (window.crypto?.subtle) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pin));
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("") === ADMIN_PIN_SHA256;
+    }
+    let h = 0x811c9dc5; for (const b of new TextEncoder().encode(pin)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
+    return h === ADMIN_PIN_FNV;
+  }
+  function gate() {
+    document.body.dataset.route = "gate";
+    document.title = `${B.name}: вход для оператора`;
+    view.className = "";
+    view.innerHTML = `<div class="wrap gate"><form class="gate-card" id="gate-form" novalidate>
+      <svg class="gate-mark" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="11" r="6.5"/><ellipse cx="20" cy="28" rx="16" ry="6.5"/></svg>
+      <h1 class="d3">Вход для оператора</h1>
+      <label for="gate-pin">Код</label>
+      <input class="input gate-pin" id="gate-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" enterkeyhint="go" aria-describedby="gate-err">
+      <p class="err" id="gate-err" role="alert" hidden>Неверный код</p>
+      <button class="btn btn--accent btn--big" type="submit">Войти</button>
+      <a class="link" href="#/">На главную</a></form></div>`;
+    const pin = $("#gate-pin"), err = $("#gate-err");
+    pin.focus();
+    pin.addEventListener("input", () => { err.hidden = true; pin.classList.remove("bad"); });
+    $("#gate-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (await pinOk(pin.value.trim())) { gateOk = true; try { sessionStorage.setItem(GATE, "1"); } catch { /* помним до перезагрузки */ } mount(); return; }
+      err.hidden = false; pin.classList.add("bad"); pin.select();
+    });
+  }
+
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
   function need(src) {
@@ -568,6 +607,7 @@
     stopStatus?.(); stopStatus = null; cancelAnimationFrame(tryRaf);
     const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
     const [route, ...rest] = path.replace(/\/$/, "").split("/");
+    if (route === "admin" && !adminOk()) { window.ADMIN?.unmount?.(); delete document.body.dataset.app; gate(); return; }
     if ((route === "admin" && !window.ADMIN) || (route === "status" && !window.ADMIN_DEMO)) {
       need("data/admin_demo.js").then(() => route === "admin" ? Promise.all([need("assets/admin.css"), need("assets/admin.js")]) : null).then(mount);
       return;

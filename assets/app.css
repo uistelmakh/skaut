@@ -978,6 +978,16 @@ body[data-route="order"] .dock { display: none; }
 .st-again svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
 .st-steps li > div { display: grid; justify-items: start; }
 @media (max-width: 420px) { .top-cta .cta-tail { display: none; } }
+/* вход для оператора */
+.gate { min-height: 72vh; display: grid; place-items: center; }
+.gate-card { width: min(360px, 100%); display: grid; gap: 12px; justify-items: stretch; padding: 28px 24px; border-radius: var(--r-l); background: var(--board); box-shadow: var(--e1); }
+.gate-card h1 { margin-bottom: 8px; }
+.gate-card label { font-weight: 600; }
+.gate-card .link { justify-self: center; margin-top: 4px; }
+.gate-mark { width: 40px; height: 40px; fill: none; stroke: var(--ink); stroke-width: 3; }
+.gate-mark ellipse { stroke: var(--accent-ink); }
+.gate-pin { text-align: center; font: 800 32px/1 var(--display); letter-spacing: .3em; }
+body[data-route="gate"] .top-nav, body[data-route="gate"] .top-cta, body[data-route="gate"] .dock { display: none; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .st-soon-nums i::before, .nf-num::before { content: attr(data-v); }   /* декоративные цифры: не текст для экранного диктора и проверки контраста */
 
