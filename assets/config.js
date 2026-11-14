@@ -61,4 +61,4 @@ window.ORDERS_API = "https://functions.yandexcloud.net/d4emb3fkt70rfn5ki4fq";
 
 /* Расчёт матча на видеокарте (функция rink-launch, tools/gpu.py setup-launcher, GPU.md). Запускает только браузер,
    где введён ключ видеокарты (админка → карточка заказа → «Видеокарта»). Пустая строка — кнопки нет. */
-window.GPU_API = "";
+window.GPU_API = "https://functions.yandexcloud.net/d4ecoq7u5tt1nnmgb287";
