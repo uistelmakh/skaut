@@ -31,7 +31,7 @@
 <link rel="preload" href="assets/fonts/onest-normal-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="media/frames/reel_hero.jpg" as="image" fetchpriority="high">
 <link rel="stylesheet" href="assets/fonts/fonts.css">
-<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/app.css?v=20261114b">
 </head>
 <body>
 <a class="skip" href="#view">К содержимому</a>
@@ -88,12 +88,13 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="assets/config.js"></script>
-<script src="data/order.js"></script>
-<script src="data/demo.js"></script>
-<script src="assets/store.js"></script>
-<script src="assets/gpu.js"></script>
+<!-- ?v=… — версия файлов: браузер не берёт старые из кэша. Менять при каждой выкладке (и ASSET_V в app.js) -->
+<script src="assets/config.js?v=20261114b"></script>
+<script src="data/order.js?v=20261114b"></script>
+<script src="data/demo.js?v=20261114b"></script>
+<script src="assets/store.js?v=20261114b"></script>
+<script src="assets/gpu.js?v=20261114b"></script>
 <!-- Админка (assets/admin.js, admin.css, data/admin_demo.js) грузится только по адресу админки: клиенту она не нужна -->
-<script src="assets/app.js"></script>
+<script src="assets/app.js?v=20261114b"></script>
 </body>
 </html>

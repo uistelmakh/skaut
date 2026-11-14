@@ -600,9 +600,11 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
+  const ASSET_V = "20261114b";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
-      const el = src.endsWith(".css") ? Object.assign(document.createElement("link"), { rel: "stylesheet", href: src }) : Object.assign(document.createElement("script"), { src });
+      const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
+      const el = src.endsWith(".css") ? Object.assign(document.createElement("link"), { rel: "stylesheet", href: url }) : Object.assign(document.createElement("script"), { src: url });
       el.onload = done; el.onerror = done; document.head.appendChild(el);
     });
   }
