@@ -126,6 +126,7 @@
         <span class="adm-demo">демо-данные</span>
         <label class="adm-search">${icon.search}<input id="a-q" placeholder="Заказ, клиент, лига" value="${esc(ctx.q)}" autocomplete="off">${kbd("/")}</label>
         <button class="adm-bell${soundOn() ? " on" : ""}" id="a-bell" aria-pressed="${soundOn()}" title="Звук при новом заказе в «Нужна помощь»"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg><span>${soundOn() ? "звук вкл" : "звук выкл"}</span></button>
+        ${window.GPU?.ready() ? `<button class="adm-bell${window.GPU.key() ? " on" : ""}" id="a-gpu" title="Ключ видеокарты на этом устройстве (assets/gpu.js)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M15 12v2"/></svg><span>${window.GPU.key() ? "видеокарта: ключ есть" : "видеокарта: ввести ключ"}</span></button>` : ""}
         <button class="adm-help-btn" id="a-help" title="Клавиши">${kbd("?")}</button>
       </header>
       <h1 class="vh">${crumb ? "Заказ оператора" : "Очередь заказов оператора"}</h1>
@@ -590,6 +591,16 @@
     document.title = `${freshHelp.size ? `(${freshHelp.size}) ` : ""}${B.name}: оператор${isCard ? ` #${parts[1]}` : ""}`;
     $("#a-bell").addEventListener("click", () => { const on = !soundOn(); try { localStorage.setItem(SOUND, on ? "1" : "0"); } catch { /* без хранилища */ } if (on) beep(); render(); });
     $("#a-help").addEventListener("click", () => { const h = $("#a-helpbox"); h.hidden = !h.hidden; });
+    $("#a-gpu")?.addEventListener("click", async () => {      // ключ видеокарты: ввести, проверить, убрать
+      if (window.GPU.key()) { if (confirm("Ключ видеокарты сохранён на этом устройстве. Убрать его?")) { window.GPU.setKey(""); render(); } return; }
+      const k = prompt("Вставь ключ видеокарты (Cmd+V) и нажми ОК");
+      if (!k || !k.trim()) return;
+      window.GPU.setKey(k);
+      const ok = await window.GPU.ping().catch(() => null);
+      if (ok === true) toast("Ключ подходит. Теперь заказ VK из формы в этом браузере считается сам");
+      else { window.GPU.setKey(""); alert(ok === false ? "Ключ не подошёл. Скопируй его заново и повтори." : "Пускатель не ответил. Проверь интернет и повтори."); }
+      render();
+    });
     $("#a-helpbox").addEventListener("click", (e) => { if (e.target.id === "a-helpbox") e.currentTarget.hidden = true; });
     $("#a-q").addEventListener("keydown", (e) => { if (e.key === "Enter" && ctx.rows?.length) { location.hash = `#/admin/order/${ctx.rows[0]}`; } });
     if (isCard) { const o = byId(parts[1]); if (o) bindCard(o); $("#a-q").addEventListener("focus", () => { location.hash = "#/admin"; }, { once: true }); }

@@ -25,6 +25,7 @@
   const run = (o) => api("POST", null, { action: "run", order: orderOf(o) });
   const status = (id) => api("GET", { action: "status", id: String(id) });
   const stop = (id) => api("POST", null, { action: "stop", id: String(id) });
+  const ping = () => api("GET", { action: "ping" }).then((r) => !!r.key);
 
   /* ошибки функции — человеческими словами */
   const WHY = {
@@ -91,5 +92,5 @@
     return () => { alive = false; clearTimeout(t); };
   }
 
-  window.GPU = { key, setKey, run, status, stop, autoRun, mountCard, ready: () => !!API_() };
+  window.GPU = { key, setKey, run, status, stop, ping, autoRun, mountCard, ready: () => !!API_() };
 })();
