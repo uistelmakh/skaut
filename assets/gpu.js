@@ -4,7 +4,7 @@
    запускает. Где ключ введён:
      • форма заказа: после «Отправить в Telegram» расчёт всей игры стартует сам (ссылки VK; YouTube облако не скачивает);
      • админка, карточка заказа: блок «Видеокарта» — состояние, «Посчитать», «Остановить».
-   Защиты на стороне функции: одна машина за раз, не больше 3 запусков в сутки, экзамены не считаются, срок машины 5 ч. */
+   Защиты на стороне функции: одна машина за раз, не больше 3 запусков в сутки, срок машины 5 ч. */
 (() => {
   const API_ = () => window.GPU_API || "";
   const KEY = "scout.gpu.key";
@@ -47,7 +47,7 @@
     run(o).then((r) => console.info("видеокарта:", r.job, "периоды", r.periods)).catch((e) => console.warn("видеокарта:", why(e)));
   }
 
-  const ST = { starting: "машина создаётся", running: "считает", done: "готово", failed: "ошибка", killed: "остановлено", lost: "машины нет", none: "не запускали" };
+  const ST = { waiting: "ждём", starting: "машина создаётся", running: "считает", done: "готово", failed: "ошибка", killed: "остановлено", lost: "машины нет", none: "не запускали" };
   function mountCard(el, o) {
     if (!el || !o) return () => {};
     let t = 0, alive = true;
@@ -63,8 +63,8 @@
         el.querySelector("#gpu-save").onclick = () => { setKey(el.querySelector("#gpu-key").value); poll(); };
         return;
       }
-      const st = s?.state || "none", busy = ["starting", "running"].includes(st);
-      const mins = s?.started ? Math.round(((s.time && !busy ? s.time : Date.now() / 1000) - s.started) / 60) : 0;
+      const st = s?.state || "none", busy = ["starting", "running", "waiting"].includes(st);
+      const mins = s?.started && s.state !== "waiting" ? Math.round(((s.time && !busy ? s.time : Date.now() / 1000) - s.started) / 60) : 0;
       const rub = s?.rate ? Math.round(mins / 60 * s.rate) : 0;
       el.innerHTML = `${css}<h3>Видеокарта</h3><div class="gpu-st"><b>${esc(ST[st] || st)}</b>${s?.note ? `<span>${esc(s.note)}</span>` : ""}
         ${s?.periods ? `<small>периоды ${s.periods.join(", ")}${s.skipped?.length ? `; пропущен ${s.skipped.map((x) => x.period).join(", ")} (экзамен)` : ""}</small>` : ""}
@@ -77,7 +77,7 @@
         catch (x) { draw(s, why(x)); }
       });
       el.querySelector("#gpu-stop")?.addEventListener("click", async () => {
-        if (!confirm("Остановить расчёт? Готовые периоды останутся в хранилище.")) return;
+        if (!confirm(s?.state === "waiting" ? "Отменить ожидание? Расчёт не запустится." : "Остановить расчёт? Готовые периоды останутся в хранилище.")) return;
         try { await stop(o.id); poll(); } catch (x) { draw(s, why(x)); }
       });
       el.querySelector("#gpu-forget").addEventListener("click", () => { if (confirm("Убрать ключ видеокарты с этого устройства?")) { setKey(""); draw(); } });
@@ -85,7 +85,7 @@
     const poll = async () => {
       clearTimeout(t);
       if (!key()) return draw();
-      try { const s = await status(o.id); draw(s); if (["starting", "running"].includes(s.state)) t = setTimeout(poll, 30000); }
+      try { const s = await status(o.id); draw(s); if (["starting", "running", "waiting"].includes(s.state)) t = setTimeout(poll, 30000); }
       catch (x) { draw(null, why(x)); }
     };
     poll();
