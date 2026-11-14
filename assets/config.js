@@ -58,3 +58,7 @@ window.KITS = [
 /* Облачная функция заказов (Yandex Cloud Functions, исходник в proto/cloud/orders). Работает на сайте
    uistelmakh.github.io; локально включается через localStorage["scout.cloud"] = "1". Пустая строка — только браузер. */
 window.ORDERS_API = "https://functions.yandexcloud.net/d4emb3fkt70rfn5ki4fq";
+
+/* Расчёт матча на видеокарте (функция rink-launch, tools/gpu.py setup-launcher, GPU.md). Запускает только браузер,
+   где введён ключ видеокарты (админка → карточка заказа → «Видеокарта»). Пустая строка — кнопки нет. */
+window.GPU_API = "";

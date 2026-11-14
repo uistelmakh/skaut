@@ -241,6 +241,7 @@
           <dt>Telegram</dt><dd>${esc(tgName(o))}${isDemo(o) ? ` <span class="muted">(демо)</span>` : ""}</dd>
           <dt>Заказ</dt><dd>${ago(o.created)}, срок ${dueCell(o)}</dd>
         </dl></section>
+      ${S.get(o.id) && window.GPU?.ready() ? `<section class="ac-box ac-gpu" id="ac-gpu"></section>` : ""}
       ${o.reason ? `<section class="ac-reason ${o.status}"><span class="ac-why">${o.status === "refused" ? "Отказ" : "Почему позвали меня"}</span><h2>${esc(o.reason)}</h2>${o.todo && o.status === "help" ? `<p class="ac-todo"><b>Что делать.</b> ${esc(o.todo)}</p>` : ""}${reasons ? `<ul>${reasons}</ul>` : ""}</section>` : `<section class="ac-reason ok"><span class="ac-why">ИИ уверен</span><h2>${o.status === "ai" ? `ИИ ещё работает: ${esc(o.aiStep || "")}, ${o.aiPct || 0}%` : "Все смены найдены уверенно, помощь не нужна"}</h2></section>`}
     </aside>`;
     const center = `<section class="ac-center" aria-label="Видео и смены">
@@ -383,6 +384,7 @@
   }
   function bindCard(o) {
     drawTl(o); drawDecide(o);
+    if ($("#ac-gpu")) cleanup.push(window.GPU.mountCard($("#ac-gpu"), S.get(o.id)));   // видеокарта (assets/gpu.js)
     const media = o.real && window.ADMIN_MEDIA;
     if (media) { loadShift(o, card.cur, true); overlayLoop(o); }
     else loadShift(o, card.cur, false);

@@ -440,6 +440,7 @@
     $("#send-order").addEventListener("click", () => {
       S.add({ id: o.id, created: Date.now(), url: o.url, number: +o.number, kit: o.kit, team: o.team, howto: o.howto, scope: o.scope, tg: o.tg, who: o.who, msg,
         period: SCOPES.find((s) => s[0] === o.scope)[1], real: o.url.includes(O.youtube) ? "game" : "" });
+      window.GPU?.autoRun(S.get(o.id));     // в браузере с ключом видеокарты матч VK сразу уходит считаться (assets/gpu.js)
       state.order = { ...blank }; saveDraft();
       closeSheet(true);
       setTimeout(() => { location.hash = `#/status/${o.id}`; }, 60);
