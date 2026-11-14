@@ -279,7 +279,12 @@
     const delta = (v, f) => `<span class="delta">${v >= 0 ? "▲" : "▼"} ${f(Math.abs(v))}<i>к прошлой игре</i></span>`;
     const P = D.pack, left = P.size - P.used;
     const pucks = Array.from({ length: P.size }, (_, i) => `<i class="${i < P.used ? "used" : ""}" style="--i:${i}"></i>`).join("");
+    // настоящие результаты заказов этого браузера (tools/gpu.py publish → over[id].result)
+    const mine = S.all().map((o) => ({ o, r: S.over(o.id).result })).filter((x) => x.r);
+    const real = mine.length ? `<div class="games rise" style="margin:0 0 28px"><h2 class="d3" style="margin:0 0 12px">Готовые игры</h2>${mine.map(({ o, r }) =>
+      `<a class="game" href="${esc(r.url)}" target="_blank" rel="noopener"><h3>№${esc(o.number)} ${esc(o.team)} <span class="tag tag--plus">заказ №${esc(o.id)}</span></h3><p>${r.periods.length === 1 ? "период" : "периоды"} ${r.periods.map((k) => k === 4 ? "ОТ" : k).join(", ")}</p><span class="num col2">${mmss(r.toi)}<small>на льду</small></span><span class="num col3">${r.shifts}<small>${plural(r.shifts, "смена", "смены", "смен")}</small></span></a>`).join("")}</div>` : "";
     return `<div class="wrap cab">
+      ${real}
       <div class="cab-head rise"><div><h1>Мои игры</h1><p class="cap" style="margin-top:8px">№${O.number} ${esc(O.team)}, ${esc(D.month.toLowerCase())}</p><span class="demo-note"><i></i>${esc(D.note)}</span></div>${jersey(O.number, true)}</div>
       <div class="pack rise" style="--d:1">
         <div class="pack-l"><span class="num">${left}</span><div><b>${plural(left, "игра осталась", "игры осталось", "игр осталось")} из ${P.size}</b><span>Пакет действует до ${esc(P.until)}</span></div></div>
@@ -474,6 +479,7 @@
       </div></div>`;
     }
     const cur = map[o.status] ?? 0, isDone = cur === 3;
+    const R = S.over(o.id).result;          // настоящий результат: страница по ссылке (tools/gpu.py publish)
     const steps = STEPS.map(([h, p], i) => `<li class="${i < cur || isDone ? "is-done" : i === cur ? "is-now" : ""}" style="--i:${i}">
         <span class="st-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
         <div><b>${h}</b><span>${i === cur && !isDone ? p : i < cur || isDone ? (i === 3 ? "Ссылка на результат уже в Telegram" : i === 0 ? "Сообщение получили" : "Готово") : p}</span>${i === 0 && cur === 0 && o.msg ? `<a class="btn btn--small st-again" href="${tgLink(o.msg)}" target="_blank" rel="noopener">${ICON.tg}Открыть Telegram ещё раз</a>` : ""}</div></li>`).join("");
@@ -482,13 +488,13 @@
       <div class="st-head rise">
         <p class="cap">Заказ №${esc(o.id)}</p>
         <h1 class="d2">${isDone ? "Твои смены готовы" : "Смены уже ищем"}</h1>
-        <p class="lead">${isDone ? `Мы нашли все смены №${esc(o.number)} и проверили каждую.` : `Результат до завтра, 20:00. Пришлём в Telegram${tg ? ` @${esc(tg)}` : " ответом на твоё сообщение"}, страницу можно закрыть.`}</p>
+        <p class="lead">${isDone ? (R ? `Смены №${esc(o.number)} найдены по номеру и цвету формы: ${R.periods.length} ${plural(R.periods.length, "период", "периода", "периодов")}.` : `Мы нашли все смены №${esc(o.number)} и проверили каждую.`) : `Результат до завтра, 20:00. Пришлём в Telegram${tg ? ` @${esc(tg)}` : " ответом на твоё сообщение"}, страницу можно закрыть.`}</p>
         ${!isDone && o.msg && cur > 0 ? `<p class="cap st-resend">Сообщение в Telegram не отправилось? <a class="link" href="${tgLink(o.msg)}" target="_blank" rel="noopener">Открыть Telegram ещё раз</a></p>` : ""}
       </div>
       <div class="st-grid">
         <ol class="st-steps rise" style="--d:1" aria-live="polite">${steps}</ol>
         <div class="st-side rise" style="--d:2">
-          ${isDone ? `<a class="st-result" href="#/result?own"><span class="num">${T.toi}</span><span>на льду, ${T.shifts} смен</span><span class="btn btn--accent">Открыть результат</span></a>` : `
+          ${isDone ? (R ? `<a class="st-result" href="${esc(R.url)}" target="_blank" rel="noopener"><span class="num">${mmss(R.toi)}</span><span>на льду, ${R.shifts} ${plural(R.shifts, "смена", "смены", "смен")}</span><span class="btn btn--accent">Открыть результат</span></a>` : `<a class="st-result" href="#/result?own"><span class="num">${T.toi}</span><span>на льду, ${T.shifts} смен</span><span class="btn btn--accent">Открыть результат</span></a>`) : `
           <div class="st-soon" aria-label="Пример того, что придёт">
             <div class="st-soon-reel"><img src="${HERO.poster}" alt="" loading="lazy"><svg viewBox="0 0 90 160" aria-hidden="true"><ellipse cx="45" cy="112" rx="24" ry="7"/></svg><b>№${esc(o.number)}</b></div>
             <div class="st-soon-txt"><b>Твой ролик появится здесь</b><span>И цифры игры: время на льду, смены, голы при тебе.</span>
@@ -600,7 +606,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261114c";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261114d";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
