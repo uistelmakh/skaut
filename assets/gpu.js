@@ -51,6 +51,7 @@
     vk_not_ready: "VK ещё обрабатывает запись. Попробуй позже.",
     bad_periods: "Не понял, какие периоды считать.",
     daily_limit: "Сегодня уже 3 запуска — это лимит на сутки (защита от счёта).",
+    budget: "Лимит расходов на сегодня исчерпан. Новый расчёт можно запустить завтра или поднять лимит (GPU.md).",
     need_key: "Ключ видеокарты не подходит. Введи его заново.",
     bad_number: "Номер игрока — только цифры.", bad_kit: "Неизвестный цвет формы.",
     cloud: "Облако Яндекса не ответило. Проверь баланс в консоли (Биллинг) и повтори.",
@@ -91,7 +92,8 @@
           <dt>Оценка</dt><dd>≈ ${est.minutes} мин, ≈ ${est.rub} ₽ <small>потолок ${est.max_rub} ₽ (срок машины ${est.max_hours} ч)</small></dd>
           <dt>Запись в VK</dt><dd class="${est.vk.ready ? "ok" : "warn"}">${esc(est.vk.note)}</dd>
           ${est.busy ? `<dt>Видеокарта</dt><dd class="warn">занята (${esc(est.busy)}): расчёт встанет в очередь</dd>` : ""}
-          <dt>Запусков сегодня</dt><dd class="${est.today >= est.limit ? "warn" : ""}">${est.today} из ${est.limit}</dd>` : `<dt>${noGpu ? "Почему" : "Оценка"}</dt><dd>${estErr ? esc(estErr) : "считаю…"}</dd>`}</dl>`}
+          <dt>Запусков сегодня</dt><dd class="${est.today >= est.limit ? "warn" : ""}">${est.today} из ${est.limit}</dd>
+          ${est.budget ? `<dt>Потрачено сегодня</dt><dd class="${est.spent_today >= est.budget - 15 ? "warn" : ""}">${Math.round(est.spent_today)} из ${Math.round(est.budget)} ₽</dd>` : ""}` : `<dt>${noGpu ? "Почему" : "Оценка"}</dt><dd>${estErr ? esc(estErr) : "считаю…"}</dd>`}</dl>`}
         <div class="gpu-row">${busy ? `<button id="gpu-stop">Остановить</button>` : noGpu ? "" : `<button class="go" id="gpu-run">${st === "none" ? "Запустить расчёт" : "Запустить заново"}</button>`}<button id="gpu-forget" title="Убрать ключ с этого устройства">Ключ</button></div>
         ${err ? `<div class="gpu-err">${esc(err)}</div>` : ""}`;
       el.querySelector("#gpu-run")?.addEventListener("click", async (e) => {
