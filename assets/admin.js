@@ -14,8 +14,8 @@
   const LOAD = Date.now();
   const REAL_ID = O.youtube;
 
-  const TABS = [["help", "Нужна помощь"], ["ai", "ИИ работает"], ["ready", "Готово к отправке"], ["sent", "Отправлено"], ["refused", "Отказ"], ["all", "Все"]];
-  const ST_NAME = { help: "Нужна помощь", ai: "ИИ работает", ready: "Готово", sent: "Отправлено", refused: "Отказ" };
+  const TABS = [["help", "Нужна помощь"], ["ai", "ИИ работает"], ["ready", "Готово к отправке"], ["sent", "Отправлено"], ["refused", "Отказ"], ["all", "Все"], ["wait", "Ждёт запуска"]];
+  const ST_NAME = { help: "Нужна помощь", ai: "ИИ работает", ready: "Готово", sent: "Отправлено", refused: "Отказ", wait: "Ждёт запуска" };
   let root = null, ctx = { tab: "help", sel: 0, q: "" }, cleanup = [];
 
   /* ---------- реальная игра: смены и сомнения из out/shl_p2/player.json ---------- */
@@ -48,17 +48,18 @@
   function fromStore(raw) {
     /* заказ из облака может прийти неполным: подставляем пустые значения, чтобы очередь не падала */
     const o = { url: "", number: "", kit: "blue", team: "", howto: "", period: "", tg: "", created: Date.now(), ...raw };
-    const ph = S.phase(o), real = o.real === "game";
+    const ph = S.phase(o), real = o.real === "game", gpu = !!S.over(o.id).gpu;   // gpu — расчёт на видеокарте запущен кнопкой
     const base = {
       id: o.id, fresh: true, client: { name: "Новый клиент", tg: o.tg }, url: String(o.url).replace(/^https?:\/\/(www\.)?/, ""),
       number: o.number, kit: o.kit, team: o.team, howto: o.howto, period: o.period, who: o.who,
       league: real ? "СХЛ" : "", home: real ? "РМАТ" : o.team, away: real ? "КГУ" : "соперник", date: real ? "27.01" : "сегодня",
       created: o.created, due: dueAt(o.created), opSec: o.opSec || 0, real: real ? "game" : "",
-      status: ph === "new" ? "ai" : ph, aiStep: ph === "new" ? "Скачиваю трансляцию" : "Ищу №" + o.number, aiPct: ph === "new" ? 6 : 54,
+      status: ph === "new" ? "ai" : ph, aiStep: gpu ? "расчёт на видеокарте запущен" : ph === "new" ? "Скачиваю трансляцию" : "Ищу №" + o.number, aiPct: gpu ? null : ph === "new" ? 6 : 54,
       conf: ph === "help" ? (real ? 0.64 : 0.33) : 0,
-      log: [[o.created, "client", "Заказ принят"], ...(ph !== "new" ? [[o.created + 3000, "ai", "Скачал трансляцию"]] : []), ...(ph === "help" || ph === "sent" ? [[o.created + 10000, "ai", real ? "Нашёл 11 смен, уверен в 7. Позвал оператора" : "Номер не читается уверенно. Позвал оператора"]] : [])],
+      log: [[o.created, "client", "Заказ принят"], ...(ph !== "new" && ph !== "wait" ? [[o.created + 3000, "ai", "Скачал трансляцию"]] : []), ...(ph === "help" || ph === "sent" ? [[o.created + 10000, "ai", real ? "Нашёл 11 смен, уверен в 7. Позвал оператора" : "Номер не читается уверенно. Позвал оператора"]] : [])],
     };
     if (real) Object.assign(base, { todo: DEMO.orders.find((x) => x.real === "game").todo, reason: "№19 почти не виден в сменах 6, 7 и 11", reasons: DEMO.orders.find((x) => x.real === "game").reasons, doubt: [6, 7, 10, 11] });
+    else if (ph === "wait" || gpu) Object.assign(base, { reason: "", reasons: [], shiftsN: 0, doubtN: 0 });   // расчёт не запускался: ни причин, ни смен
     else Object.assign(base, { todo: "Кадров в демо нет. В настоящем заказе: посмотри смены, подтверди (Y) или отклони (N).", reason: "Номер не читается уверенно", reasons: ["Это демо-заказ без кадров: ИИ здесь не запускался"], shiftsN: 10, doubtN: 4 });
     return base;
   }
@@ -69,7 +70,7 @@
     return list.map((o) => {
       const ov = S.over(o.id);
       const m = { ...o, ...ov, log: [...o.log, ...(ov.log || [])] };
-      m.shifts = m.real ? realShifts() : fakeShifts(m);
+      m.shifts = m.status === "wait" || (m.status === "ai" && ov.gpu) ? [] : m.real ? realShifts() : fakeShifts(m);   // расчёт не запускался или ещё идёт — смен нет
       (ov.dec ? Object.entries(ov.dec) : []).forEach(([n, d]) => { const s = m.shifts.find((x) => x.n === +n); if (s) s.st = d; });
       (ov.added || []).forEach((p, i) => m.shifts.push({ n: 100 + i, a: p[0], b: p[1], sec: Math.round((p[1] - p[0]) * 1200), st: "added", conf: 1, note: "добавлена оператором" }));
       m.shifts.sort((a, b) => a.a - b.a);
@@ -177,13 +178,14 @@
         <span class="c-client"><b>${esc(tgName(o))}</b><small>${esc(o.client.name)}${isDemo(o) ? " · демо" : ""}</small></span>
         <span class="c-match"><b>${esc(o.home)} – ${esc(o.away)}</b><small>${[o.league, o.date, o.period].filter(Boolean).map(esc).join(", ")}</small></span>
         <span class="c-num">${kitDot(o.kit)}<b>${o.number}</b></span>
-        <span class="c-st">${ctx.tab === "help" ? "" : `<span class="pill ${o.status}">${ST_NAME[o.status]}</span>`}${o.status === "help" ? `<small class="why">${esc(o.reason)}</small>` : o.status === "ai" ? `<small>${esc(o.aiStep || "")}, ${o.aiPct || 0}%</small>` : ""}</span>
+        <span class="c-st">${ctx.tab === "help" ? "" : `<span class="pill ${o.status}">${ST_NAME[o.status]}</span>`}${o.status === "help" ? `<small class="why">${esc(o.reason)}</small>` : o.status === "ai" ? `<small>${esc(o.aiStep || "")}${o.aiPct === null ? "" : `, ${o.aiPct || 0}%`}</small>` : o.status === "wait" ? `<small>расчёт не запущен</small>` : ""}</span>
         <span class="c-conf">${confBar(o.conf || 0)}</span>
-        <span class="c-sh">${o.status === "ai" ? "…" : o.status === "help" ? `<b>${t.n} из ${t.all}</b>${o.shifts.filter((x) => x.st === "doubt").length ? `<em>решить ${o.shifts.filter((x) => x.st === "doubt").length}</em>` : `<em>сомнений нет</em>`}` : o.status === "refused" ? "<b>0</b>" : `<b>${o.real ? t.n : o.shiftsN || t.n}</b>`}</span>
+        <span class="c-sh">${o.status === "ai" || o.status === "wait" ? "…" : o.status === "help" ? `<b>${t.n} из ${t.all}</b>${o.shifts.filter((x) => x.st === "doubt").length ? `<em>решить ${o.shifts.filter((x) => x.st === "doubt").length}</em>` : `<em>сомнений нет</em>`}` : o.status === "refused" ? "<b>0</b>" : `<b>${o.real ? t.n : o.shiftsN || t.n}</b>`}</span>
         <span class="c-due">${dueCell(o)}</span>
       </a>`;
     }).join("") : `<div class="a-empty"><b>${ctx.tab === "help" ? "Помощь никому не нужна" : "Здесь пусто"}</b><span>${ctx.tab === "help" ? "ИИ справляется сам. Можно отдохнуть." : "Попробуй другую вкладку или очисти поиск."}</span></div>`;
     return chrome(`<div class="adm-main">
+      ${counts.wait ? `<div class="a-alert" role="status">Ждут запуска расчёта: ${all.filter((o) => o.status === "wait").map((o) => `<a href="#/admin/order/${o.id}">#${o.id}</a>`).join(", ")}. Открой заявку и нажми «Запустить расчёт»</div>` : ""}
       ${freshHelp.size ? `<div class="a-alert" role="status">Новый заказ ждёт помощи: ${[...freshHelp].map((id) => `<a href="#/admin/order/${id}">#${id}</a>`).join(", ")}</div>` : ""}
       <section class="a-stats">
         ${((n) => stat(n, `${n % 10 === 1 && n % 100 !== 11 ? "заказ" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "заказа" : "заказов"} сегодня`))(all.filter((o) => o.created >= +today).length)}
@@ -243,7 +245,7 @@
           <dt>Заказ</dt><dd>${ago(o.created)}, срок ${dueCell(o)}</dd>
         </dl></section>
       ${S.get(o.id) && window.GPU?.ready() ? `<section class="ac-box ac-gpu" id="ac-gpu"></section>` : ""}
-      ${o.reason ? `<section class="ac-reason ${o.status}"><span class="ac-why">${o.status === "refused" ? "Отказ" : "Почему позвали меня"}</span><h2>${esc(o.reason)}</h2>${o.todo && o.status === "help" ? `<p class="ac-todo"><b>Что делать.</b> ${esc(o.todo)}</p>` : ""}${reasons ? `<ul>${reasons}</ul>` : ""}</section>` : `<section class="ac-reason ok"><span class="ac-why">ИИ уверен</span><h2>${o.status === "ai" ? `ИИ ещё работает: ${esc(o.aiStep || "")}, ${o.aiPct || 0}%` : "Все смены найдены уверенно, помощь не нужна"}</h2></section>`}
+      ${o.reason ? `<section class="ac-reason ${o.status}"><span class="ac-why">${o.status === "refused" ? "Отказ" : "Почему позвали меня"}</span><h2>${esc(o.reason)}</h2>${o.todo && o.status === "help" ? `<p class="ac-todo"><b>Что делать.</b> ${esc(o.todo)}</p>` : ""}${reasons ? `<ul>${reasons}</ul>` : ""}</section>` : o.status === "wait" ? `<section class="ac-reason wait"><span class="ac-why">Ждёт запуска</span><h2>Расчёт не запускался</h2><p class="ac-todo">Проверь заявку и нажми «Запустить расчёт» в блоке «Видеокарта». До этого машина не создаётся и деньги не тратятся.</p></section>` : `<section class="ac-reason ok"><span class="ac-why">ИИ уверен</span><h2>${o.status === "ai" ? `ИИ ещё работает: ${esc(o.aiStep || "")}${o.aiPct === null ? "" : `, ${o.aiPct || 0}%`}` : "Все смены найдены уверенно, помощь не нужна"}</h2></section>`}
     </aside>`;
     const center = `<section class="ac-center" aria-label="Видео и смены">
       <div class="ac-player-box${media ? "" : " empty"}" id="ac-player">
@@ -304,7 +306,7 @@
     const left = o.shifts.filter((x) => x.st === "doubt").length;
     if (!s || !["doubt", "yes", "no"].includes(s.st)) {
       const had = o.shifts.some((x) => ["yes", "no"].includes(x.st));
-      el.innerHTML = left || ["sent", "refused", "ai"].includes(o.status) ? "" : `<div class="ac-alldone">${icon.yes}<span>${had ? "Все сомнительные смены разобраны, цифры пересчитаны." : "Сомнительных смен нет. Прочитай причину слева и отправляй."}</span><button class="ayes" data-act="send">${icon.tg}<span>Отправить клиенту</span>${kbd("S")}</button></div>`;
+      el.innerHTML = left || ["sent", "refused", "ai", "wait"].includes(o.status) ? "" : `<div class="ac-alldone">${icon.yes}<span>${had ? "Все сомнительные смены разобраны, цифры пересчитаны." : "Сомнительных смен нет. Прочитай причину слева и отправляй."}</span><button class="ayes" data-act="send">${icon.tg}<span>Отправить клиенту</span>${kbd("S")}</button></div>`;
       return;
     }
     el.innerHTML = `<div class="ac-q"><div><b>Смена ${s.n}${s.c0 ? `, ${s.c0}–${s.c1}` : ""}: это №${o.number}?</b><span>${esc(s.note)}. Уверенность ИИ ${Math.round(s.conf * 100)}%. Осталось ${left}.</span><em class="ac-look">Ищи: ${esc(kitBy(o.kit).title.toLowerCase())} форма${o.howto ? ", " + esc(o.howto.toLowerCase()) : ""}.<span class="keys"> Он: ${kbd("Y")}. Не он: ${kbd("N")}.</span></em>${left > 1 ? `<button class="ayes-all" data-act="yesall">Да для всех ${left}${kbd("⇧Y")}</button>` : ""}</div>
@@ -385,7 +387,7 @@
   }
   function bindCard(o) {
     drawTl(o); drawDecide(o);
-    if ($("#ac-gpu")) cleanup.push(window.GPU.mountCard($("#ac-gpu"), S.get(o.id)));   // видеокарта (assets/gpu.js)
+    if ($("#ac-gpu")) cleanup.push(window.GPU.mountCard($("#ac-gpu"), S.get(o.id), () => render()));   // видеокарта (assets/gpu.js)
     const media = o.real && window.ADMIN_MEDIA;
     if (media) { loadShift(o, card.cur, true); overlayLoop(o); }
     else loadShift(o, card.cur, false);
@@ -576,7 +578,7 @@
     if (k === "j" || k === "о" || e.key === "ArrowDown") { e.preventDefault(); moveSel(1); return; }
     if (k === "k" || k === "л" || e.key === "ArrowUp") { e.preventDefault(); moveSel(-1); return; }
     if (e.key === "Enter" && ctx.rows?.length) { location.hash = `#/admin/order/${ctx.rows[ctx.sel]}`; return; }
-    if (/^[1-6]$/.test(e.key)) { ctx.tab = TABS[+e.key - 1][0]; ctx.sel = 0; render(); }
+    if (/^[1-7]$/.test(e.key)) { ctx.tab = TABS[+e.key - 1][0]; ctx.sel = 0; render(); }
   }
   document.addEventListener("keydown", onKey);
 

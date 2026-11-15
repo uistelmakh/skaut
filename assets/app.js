@@ -445,7 +445,7 @@
     $("#send-order").addEventListener("click", () => {
       S.add({ id: o.id, created: Date.now(), url: o.url, number: +o.number, kit: o.kit, team: o.team, howto: o.howto, scope: o.scope, tg: o.tg, who: o.who, msg,
         period: SCOPES.find((s) => s[0] === o.scope)[1], real: o.url.includes(O.youtube) ? "game" : "" });
-      window.GPU?.autoRun(S.get(o.id));     // в браузере с ключом видеокарты матч VK сразу уходит считаться (assets/gpu.js)
+      // расчёт на видеокарте заявка не запускает: её запускает владелец кнопкой в админке (assets/gpu.js)
       state.order = { ...blank }; saveDraft();
       closeSheet(true);
       setTimeout(() => { location.hash = `#/status/${o.id}`; }, 60);
@@ -606,7 +606,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261114d";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261115a";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша

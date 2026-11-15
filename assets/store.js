@@ -22,8 +22,14 @@
   /* Заказ из формы проходит сам: принят → ИИ смотрит → (оператор) → готово.
      Если оператор ничего не сделал, после 10 секунд заказ ждёт его в очереди «Нужна помощь». */
   const PHASES = [[0, "new"], [3000, "ai"], [10000, "help"]];
+  /* Матч по ссылке VK считается на видеокарте, и запускает расчёт только владелец кнопкой в админке (assets/gpu.js).
+     Пока кнопку не нажали (нет отметки over[id].gpu), заявка стоит в статусе «ждёт запуска». */
+  const gpuOrder = (o) => !!window.GPU_API && /vk(video)?\.(com|ru)/.test(String(o.url || ""));
   function phase(o, now = Date.now()) {
     if (o.status && ["sent", "refused", "ready"].includes(o.status)) return o.status;
+    /* заказ для видеокарты: до кнопки — «ждёт запуска», после — «ИИ работает», пока результат не отправлен
+       (что с расчётом на самом деле, показывает блок «Видеокарта» в карточке) */
+    if (gpuOrder(o)) return (read().over[o.id] || {}).gpu ? "ai" : "wait";
     const dt = now - o.created; let p = "new";
     for (const [t, s] of PHASES) if (dt >= t) p = s;
     return p;

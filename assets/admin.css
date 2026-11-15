@@ -91,6 +91,7 @@ body[data-app="admin"] :focus-visible { outline: 2px solid var(--a-acc2); outlin
 .pill.ready { color: var(--a-yes); background: rgba(52, 210, 123, .13); }
 .pill.sent { color: var(--a-ink2); background: var(--a-panel2); }
 .pill.refused { color: var(--a-no); background: rgba(240, 87, 75, .12); }
+.pill.wait { color: var(--a-doubt); background: transparent; box-shadow: inset 0 0 0 1px currentColor; }
 .c-st .pill { margin-bottom: 3px; }
 
 .cf { display: grid; grid-template-columns: 1fr 36px; align-items: center; gap: 8px; }
