@@ -65,7 +65,8 @@
   }
   function dueAt(created) { const d = new Date(created); d.setDate(d.getDate() + 1); d.setHours(20, 0, 0, 0); return +d; }
   function allOrders() {
-    const demo = DEMO.orders.map((o) => ({ ...o, created: LOAD - o.createdMin * 60000, due: LOAD + o.dueMin * 60000, log: o.log.map(([m, a, t]) => [LOAD - m * 60000, a, t]) }));
+    // на боевом сайте (заказы из облака) демо-заказов нет: только настоящие заявки
+    const demo = (S.cloud ? [] : DEMO.orders).map((o) => ({ ...o, created: LOAD - o.createdMin * 60000, due: LOAD + o.dueMin * 60000, log: o.log.map(([m, a, t]) => [LOAD - m * 60000, a, t]) }));
     const list = [...S.all().map(fromStore), ...demo];
     return list.map((o) => {
       const ov = S.over(o.id);
@@ -124,7 +125,7 @@
       <header class="adm-top">
         <a class="adm-logo" href="#/admin"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="11" r="6.5"/><ellipse cx="20" cy="28" rx="16" ry="6.5"/></svg><b>${esc(B.name)}</b><span>оператор</span></a>
         ${crumb || ""}
-        <span class="adm-demo">демо-данные</span>
+        ${S.cloud ? "" : `<span class="adm-demo">демо-данные</span>`}
         <label class="adm-search">${icon.search}<input id="a-q" placeholder="Заказ, клиент, лига" value="${esc(ctx.q)}" autocomplete="off">${kbd("/")}</label>
         <button class="adm-bell${soundOn() ? " on" : ""}" id="a-bell" aria-pressed="${soundOn()}" title="Звук при новом заказе в «Нужна помощь»"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg><span>${soundOn() ? "звук вкл" : "звук выкл"}</span></button>
         ${window.GPU?.ready() ? `<button class="adm-bell${window.GPU.key() ? " on" : ""}" id="a-gpu" title="Ключ видеокарты на этом устройстве (assets/gpu.js)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M15 12v2"/></svg><span>${window.GPU.key() ? "видеокарта: ключ есть" : "видеокарта: ввести ключ"}</span></button>` : ""}
