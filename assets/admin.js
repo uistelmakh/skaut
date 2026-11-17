@@ -516,7 +516,8 @@
         $("#a-copy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(msg); toast("Сообщение скопировано"); } catch { toast("Выдели текст и скопируй"); } });
         $("#a-sendgo").addEventListener("click", () => {
           const sec = saveTime(o); log(o.id, "ai", `Собрал результат: ${t.n} смен, ${mmss(t.toi)} на льду`);
-          S.patch(o.id, { status: "sent" }); log(o.id, "op", `Отправил клиенту. Моё время ${mmss(sec)}`);
+          const res_ = window.GPU?.resultFor?.(o.id);     // выложенный результат расчёта (assets/gpu.js) — клиент получит ссылку на него
+          S.patch(o.id, res_ ? { status: "sent", result: res_ } : { status: "sent" }); log(o.id, "op", `Отправил клиенту. Моё время ${mmss(sec)}`);
           lastSent = { id: o.id, at: Date.now() }; closeModal();
           setTimeout(() => { location.hash = next ? `#/admin/order/${next.id}` : "#/admin"; setTimeout(() => toast(`#${o.id} отправлен · Z вернуть${next ? `. Дальше #${next.id}` : ""}`), 350); }, 300);
         });

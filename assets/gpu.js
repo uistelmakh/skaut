@@ -255,6 +255,21 @@
   function autoRun() {}
 
   const ST = { waiting: "ждём", starting: "машина создаётся", running: "считает", done: "готово", failed: "ошибка", killed: "остановлено", lost: "машины нет", none: "ждёт запуска" };
+  /* выложенный результат: итог, предупреждения и ссылка для проверки; отправка клиенту — кнопкой */
+  const PUB = new Map();
+  const resultFor = (id) => { const P = PUB.get(String(id)); return P ? { url: P.url, toi: P.toi, shifts: P.shifts, periods: P.periods } : null; };
+  function resHtml(s, o) {
+    const P = s?.published;
+    if (!P) return s?.state === "done" ? `<p class="gpu-res wait">Расчёт закончен, но результат ещё не выложен на страницу заказа — проверять и отправлять пока нечего.</p>` : "";
+    PUB.set(String(o.id), P);
+    const sent = window.STORE?.over(o.id).status === "sent" && window.STORE.over(o.id).result?.url === P.url;
+    const per = Object.entries(P.per || {}).map(([k, v]) => `<li>${k === "4" ? "Овертайм" : `Период ${k}`}: ${v.shifts} смен, ${mmss(v.toi)}${v.warn?.length ? ` <span class="warn">· предупреждений ${v.warn.length}</span>` : ""}</li>`).join("");
+    const warns = Object.entries(P.per || {}).flatMap(([k, v]) => (v.warn || []).map((w) => `<li>${k === "4" ? "ОТ" : `П${k}`}: ${esc(w)}</li>`));
+    return `<div class="gpu-res"><b>Результат ${sent ? "отправлен клиенту" : "готов к проверке"}</b><span>${P.shifts} смен, ${mmss(P.toi)} на льду</span><ul>${per}</ul>
+      ${warns.length ? `<details><summary>Предупреждения программы (${warns.length})</summary><ul class="warn">${warns.join("")}</ul></details>` : ""}
+      <div class="gpu-row"><a class="gpu-a" href="${esc(P.url)}" target="_blank" rel="noopener">Открыть результат</a>${sent ? "" : `<button class="go" id="gpu-send">Отправить клиенту</button>`}</div>
+      <small>${sent ? "Клиент видит эту же страницу в кабинете и на странице заказа." : "Это та самая страница, которую увидит клиент. Пока не отправишь — он её не видит."}</small></div>`;
+  }
   function mountCard(el, o, onLaunch) {      // onLaunch — заявка ушла из «ждёт запуска»: админка перерисует карточку
     if (!el || !o) return () => {};
     let t = 0, alive = true, est = null, estErr = "", noGpu = false, last = null, lv = null, closeLive = null;   // noGpu — ссылка не VK: облако такой матч не считает; lv — живая сводка с машины
@@ -265,7 +280,11 @@
       .gpu-est{margin:0 0 14px;font-size:14px;line-height:1.4}.gpu-est dt{font-size:12px;opacity:.65;margin-top:8px}.gpu-est dd{margin:0;font-weight:600}
       .gpu-est dd small{display:block;font-weight:400;opacity:.7}.gpu-est dd.ok{color:#34d27b}.gpu-est dd.warn{color:#f2b53a}
       .gpu-live{margin:0 0 10px;padding:0;list-style:none;font-size:13px;line-height:1.4}.gpu-live li{padding:5px 0;border-top:1px solid rgba(255,255,255,.08);overflow-wrap:anywhere}
-      .gpu-live .error{color:#ff6b5e}.gpu-live .warn{color:#f2b53a}</style>`;
+      .gpu-live .error{color:#ff6b5e}.gpu-live .warn{color:#f2b53a}
+      .gpu-res{margin:0 0 14px;padding:10px 12px;border:1px solid #3DFF2E;border-radius:10px;font-size:14px;line-height:1.4}.gpu-res.wait{border-color:#f2b53a;color:#f2b53a}
+      .gpu-res b{display:block;font-size:15px}.gpu-res ul{margin:6px 0;padding-left:18px;font-size:13px}.gpu-res .warn{color:#f2b53a}.gpu-res details{margin:4px 0 8px;font-size:13px}
+      .gpu-res summary{cursor:pointer}.gpu-res small{display:block;opacity:.7;margin-top:8px}.gpu-res .gpu-row{margin-top:8px}
+      .gpu-a{padding:8px 12px;border-radius:8px;border:1px solid currentColor;color:inherit;text-decoration:none}</style>`;
     const draw = (s, err) => {
       if (!alive) return;
       last = s;
@@ -282,6 +301,7 @@
         ${s?.periods ? `<small>периоды ${s.periods.join(", ")}${s.skipped?.length ? `; пропущен ${s.skipped.map((x) => x.period).join(", ")} (экзамен)` : ""}</small>` : ""}
         ${mins ? `<small>${mins} мин, около ${rub} ₽</small>` : ""}${s?.results?.length ? `<small>готовы: ${s.results.length} из ${s.periods?.length || "?"}; на Мак — tools/gpu.py fetch ${esc(s.job)}</small>` : ""}</div>
         ${lv?.live && st !== "none" ? `<ul class="gpu-live">${(lv.live.alerts || []).slice(0, 3).map((a) => `<li class="${a.level}">${esc(a.text.length > 150 ? a.text.slice(0, 150) + "…" : a.text)}</li>`).join("")}${(lv.live.periods || []).map((p) => `<li class="${p.state === "ошибка" ? "error" : ""}">${esc(perLine(p))}</li>`).join("")}</ul>` : ""}
+        ${resHtml(s, o)}
         ${busy ? "" : `<dl class="gpu-est">${est ? `<dt>Периоды</dt><dd>${esc(perText(est.periods))}</dd>
           <dt>Оценка</dt><dd>≈ ${est.minutes} мин, ≈ ${est.rub} ₽ <small>потолок ${est.max_rub} ₽ (срок машины ${est.max_hours} ч)</small></dd>
           <dt>Запись в VK</dt><dd class="${est.vk.ready ? "ok" : "warn"}">${esc(est.vk.note)}</dd>
@@ -308,6 +328,12 @@
         try { await stop(o.id); poll(); } catch (x) { draw(s, why(x)); }
       });
       el.querySelector("#gpu-live")?.addEventListener("click", () => { closeLive = openLive(o, lv); });
+      el.querySelector("#gpu-send")?.addEventListener("click", () => {
+        const P = s.published;
+        if (!confirm(`Отправить клиенту результат заказа #${o.id}?\n\n${P.shifts} смен, ${mmss(P.toi)} на льду. Клиент увидит его на странице заказа и в кабинете.`)) return;
+        window.STORE.patch(o.id, { status: "sent", result: { url: P.url, toi: P.toi, shifts: P.shifts, periods: P.periods } });
+        draw(s); onLaunch?.();
+      });
       el.querySelector("#gpu-forget").addEventListener("click", () => { if (confirm("Убрать ключ видеокарты с этого устройства?")) { setKey(""); draw(); } });
     };
     const poll = async () => {
@@ -329,5 +355,5 @@
     return () => { alive = false; clearTimeout(t); closeLive?.(); };
   }
 
-  window.GPU = { key, setKey, run, estimate, status, stop, ping, live, openLive, liveHtml, syslog, openJournal, journalHtml, autoRun, mountCard, ready: () => !!API_() };
+  window.GPU = { key, setKey, run, estimate, status, stop, ping, live, openLive, liveHtml, syslog, openJournal, journalHtml, resultFor, autoRun, mountCard, ready: () => !!API_() };
 })();
