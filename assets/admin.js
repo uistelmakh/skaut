@@ -252,7 +252,7 @@
     const center = `<section class="ac-center" aria-label="Видео и смены">
       <div class="ac-player-box${media ? "" : " empty"}" id="ac-player">
         ${media ? `<video id="ac-video" muted playsinline preload="auto"></video><svg class="ac-ov" id="ac-ov" viewBox="0 0 1000 562.5" preserveAspectRatio="none"></svg><div class="ac-pickhint" id="ac-pickhint">Кликни по игроку №${o.number}. ИИ поведёт его дальше сам</div><div class="ac-follow" id="ac-follow"><i></i><span>ИИ ведёт игрока по записи</span></div><div class="ac-nomark" id="ac-nomark" hidden>ИИ не видит №${o.number} в этом кадре. ${kbd("M")} к отметке</div>`
-          : `<div class="ac-noframe"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="14" width="52" height="36" rx="6"/><circle cx="32" cy="27" r="5"/><ellipse cx="32" cy="41" rx="11" ry="3.5"/></svg><b>Кадров нет</b><span>Это демо-заказ без видео. Кадры в админке есть только у игр автора проекта (#1047 и заказы по примеру из формы).</span></div>`}
+          : `<div class="ac-noframe"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="14" width="52" height="36" rx="6"/><circle cx="32" cy="27" r="5"/><ellipse cx="32" cy="41" rx="11" ry="3.5"/></svg><b>${S.cloud ? "Результата пока нет" : "Кадров нет"}</b><span>${S.cloud ? "Смены и ролики появятся здесь, когда расчёт закончится и результат будет выложен. Что происходит сейчас — в блоке «Видеокарта» слева, кнопка «Ход расчёта»." : "Это демо-заказ без видео. Кадры в админке есть только у игр автора проекта (#1047 и заказы по примеру из формы)."}</span></div>`}
         <div class="ac-cap" id="ac-cap"></div>
       </div>
       <div class="ac-tl" id="ac-tl"></div>

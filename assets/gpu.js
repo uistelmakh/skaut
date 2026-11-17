@@ -278,7 +278,7 @@
       const st = s?.state || "none", busy = ["starting", "running", "waiting"].includes(st);
       const mins = s?.started && s.state !== "waiting" ? Math.round(((s.time && !busy ? s.time : Date.now() / 1000) - s.started) / 60) : 0;
       const rub = s?.rate ? Math.round(mins / 60 * s.rate) : 0;
-      el.innerHTML = `${css}<h3>Видеокарта</h3><div class="gpu-st"><b>${esc(noGpu && st === "none" ? "на видеокарте не считается" : ST[st] || st)}</b>${s?.note ? `<span>${esc(s.note)}</span>` : ""}
+      el.innerHTML = `${css}<h3>Видеокарта</h3><div class="gpu-st"><b>${esc(noGpu && st === "none" ? "на видеокарте не считается" : ST[st] || st)}</b>${s?.note && !(lv?.live && st !== "none" && /п\d|пОТ/.test(s.note)) ? `<span>${esc(s.note)}</span>` : ""}
         ${s?.periods ? `<small>периоды ${s.periods.join(", ")}${s.skipped?.length ? `; пропущен ${s.skipped.map((x) => x.period).join(", ")} (экзамен)` : ""}</small>` : ""}
         ${mins ? `<small>${mins} мин, около ${rub} ₽</small>` : ""}${s?.results?.length ? `<small>готовы: ${s.results.length} из ${s.periods?.length || "?"}; на Мак — tools/gpu.py fetch ${esc(s.job)}</small>` : ""}</div>
         ${lv?.live && st !== "none" ? `<ul class="gpu-live">${(lv.live.alerts || []).slice(0, 3).map((a) => `<li class="${a.level}">${esc(a.text.length > 150 ? a.text.slice(0, 150) + "…" : a.text)}</li>`).join("")}${(lv.live.periods || []).map((p) => `<li class="${p.state === "ошибка" ? "error" : ""}">${esc(perLine(p))}</li>`).join("")}</ul>` : ""}
