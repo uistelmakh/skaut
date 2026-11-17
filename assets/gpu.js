@@ -245,6 +245,7 @@
     need_key: "Ключ видеокарты не подходит. Введи его заново.",
     bad_number: "Номер игрока — только цифры.", bad_kit: "Неизвестный цвет формы.",
     cloud: "Облако Яндекса не ответило. Проверь баланс в консоли (Биллинг) и повтори.",
+    server: "Пускатель в облаке споткнулся на этом запросе. Расчёт от этого не останавливается.",
     not_configured: "Пускатель ещё не подключён (GPU_API в config.js пуст).",
   };
   const why = (e) => WHY[e.message] || `Ошибка: ${e.message}`;
@@ -319,7 +320,10 @@
         if (busy) t = setTimeout(poll, 20000);
         else if (!est && !estErr) estimate(o).then((e) => { est = e; draw(last); }).catch((x) => { estErr = why(x); noGpu = ["youtube", "not_vk"].includes(x.message); draw(last); });
         if (s.state && s.state !== "none" && mark(o.id, s.job, s.started ? s.started * 1000 : 0)) onLaunch?.();   // запущен раньше или с другого устройства
-      } catch (x) { draw(null, why(x)); }
+      } catch (x) {                     // разовый сбой запроса: прошлое состояние остаётся на экране, через 20 с пробуем снова
+        draw(last, `${why(x)}${x.body?.detail ? ` (${x.body.detail})` : ""} Повторю запрос через 20 секунд.`);
+        if (alive && x.message !== "need_key" && x.message !== "not_configured") t = setTimeout(poll, 20000);
+      }
     };
     poll();
     return () => { alive = false; clearTimeout(t); closeLive?.(); };
