@@ -418,3 +418,16 @@ body[data-app="admin"] :focus-visible { outline: 2px solid var(--a-acc2); outlin
 .a-stat .v { font-size: 34px; }
 .a-stat .a-goal { grid-column: 1 / -1; margin-top: 4px; }
 .atool.send.wait { background: #26314A; border-color: #3A4A70; color: #DCE3F2; }   /* «ещё есть сомнения»: тише, но читаемо */
+
+/* результат расчёта в центре карточки заказа (A4): виден и отправляется с любого устройства */
+.ac-res { display: grid; gap: 10px; padding: 16px 18px; margin-bottom: 12px; border-radius: 14px; background: var(--a-panel); border: 1px solid #3DFF2E; }
+.ac-res-st { justify-self: start; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #3DFF2E; }
+.ac-res-st.sent { color: var(--a-ink3); }
+.ac-res > b { font-size: 24px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.ac-res ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14px; color: var(--a-ink2); }
+.ac-res li { display: grid; grid-template-columns: minmax(0, 1fr) auto 56px; gap: 12px; font-variant-numeric: tabular-nums; }
+.ac-res li span:last-child { text-align: right; color: var(--a-ink); }
+.ac-res-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ac-res-btns .abtn { min-height: 44px; flex: 1 1 160px; justify-content: center; text-decoration: none; }
+.ac-res small { color: var(--a-ink3); line-height: 1.4; }
+.ac-player-box.has-res { display: none; }

@@ -249,10 +249,18 @@
       ${S.get(o.id) && window.GPU?.ready() ? `<section class="ac-box ac-gpu" id="ac-gpu"></section>` : ""}
       ${o.reason ? `<section class="ac-reason ${o.status}"><span class="ac-why">${o.status === "refused" ? "Отказ" : "Почему позвали меня"}</span><h2>${esc(o.reason)}</h2>${o.todo && o.status === "help" ? `<p class="ac-todo"><b>Что делать.</b> ${esc(o.todo)}</p>` : ""}${reasons ? `<ul>${reasons}</ul>` : ""}</section>` : o.status === "wait" ? `<section class="ac-reason wait"><span class="ac-why">Ждёт запуска</span><h2>Расчёт не запускался</h2><p class="ac-todo">Проверь заявку и нажми «Запустить расчёт» в блоке «Видеокарта». До этого машина не создаётся и деньги не тратятся.</p></section>` : `<section class="ac-reason ok"><span class="ac-why">ИИ уверен</span><h2>${o.status === "ai" ? `ИИ ещё работает: ${esc(o.aiStep || "")}${o.aiPct === null ? "" : `, ${o.aiPct || 0}%`}` : "Все смены найдены уверенно, помощь не нужна"}</h2></section>`}
     </aside>`;
+    const dr = !media && S.cloud ? (S.over(o.id).draft || S.over(o.id).result) : null;      // выложенный результат расчёта (tools/gpu.py publish)
+    const drSent = dr && S.over(o.id).status === "sent" && S.over(o.id).result?.url === dr.url;
+    const drHtml = dr ? `<div class="ac-res"><span class="ac-res-st ${drSent ? "sent" : ""}">${drSent ? "Отправлено клиенту" : "Готово к проверке"}</span>
+        <b>${dr.shifts} смен · ${mmss(dr.toi)} на льду</b>
+        ${dr.per ? `<ul>${Object.entries(dr.per).map(([k, v]) => `<li><span>${k === "4" ? "Овертайм" : `${k}-й период`}</span><span>${v.shifts} смен</span><span>${mmss(v.toi)}</span></li>`).join("")}</ul>` : ""}
+        <div class="ac-res-btns"><a class="abtn" href="${esc(dr.url)}" target="_blank" rel="noopener">Открыть результат</a>${drSent ? "" : `<button class="abtn send" id="ac-res-send">Отправить клиенту</button>`}</div>
+        <small>${drSent ? "Клиент видит эту страницу в кабинете и на странице заказа." : "По кнопке «Открыть результат» — та самая страница, которую увидит клиент. Пока не отправишь, он её не видит."}</small></div>` : "";
     const center = `<section class="ac-center" aria-label="Видео и смены">
-      <div class="ac-player-box${media ? "" : " empty"}" id="ac-player">
+      ${drHtml}
+      <div class="ac-player-box${media ? "" : " empty"}${dr ? " has-res" : ""}" id="ac-player">
         ${media ? `<video id="ac-video" muted playsinline preload="auto"></video><svg class="ac-ov" id="ac-ov" viewBox="0 0 1000 562.5" preserveAspectRatio="none"></svg><div class="ac-pickhint" id="ac-pickhint">Кликни по игроку №${o.number}. ИИ поведёт его дальше сам</div><div class="ac-follow" id="ac-follow"><i></i><span>ИИ ведёт игрока по записи</span></div><div class="ac-nomark" id="ac-nomark" hidden>ИИ не видит №${o.number} в этом кадре. ${kbd("M")} к отметке</div>`
-          : `<div class="ac-noframe"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="14" width="52" height="36" rx="6"/><circle cx="32" cy="27" r="5"/><ellipse cx="32" cy="41" rx="11" ry="3.5"/></svg><b>${S.cloud ? "Результата пока нет" : "Кадров нет"}</b><span>${S.cloud ? "Смены и ролики появятся здесь, когда расчёт закончится и результат будет выложен. Что происходит сейчас — в блоке «Видеокарта» слева, кнопка «Ход расчёта»." : "Это демо-заказ без видео. Кадры в админке есть только у игр автора проекта (#1047 и заказы по примеру из формы)."}</span></div>`}
+          : `<div class="ac-noframe"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="14" width="52" height="36" rx="6"/><circle cx="32" cy="27" r="5"/><ellipse cx="32" cy="41" rx="11" ry="3.5"/></svg><b>${S.cloud ? "Результата пока нет" : "Кадров нет"}</b><span>${S.cloud ? "Смены и ролики появятся здесь, когда расчёт закончится и результат будет выложен. Что происходит сейчас — в блоке «Видеокарта», кнопка «Ход расчёта»." : "Это демо-заказ без видео. Кадры в админке есть только у игр автора проекта (#1047 и заказы по примеру из формы)."}</span></div>`}
         <div class="ac-cap" id="ac-cap"></div>
       </div>
       <div class="ac-tl" id="ac-tl"></div>
@@ -390,6 +398,12 @@
   function bindCard(o) {
     drawTl(o); drawDecide(o);
     if ($("#ac-gpu")) cleanup.push(window.GPU.mountCard($("#ac-gpu"), S.get(o.id), () => render()));   // видеокарта (assets/gpu.js)
+    $("#ac-res-send")?.addEventListener("click", () => {                // отправка результата расчёта клиенту — с любого устройства
+      const D = S.over(o.id).draft; if (!D) return;
+      if (!confirm(`Отправить клиенту результат заказа #${o.id}?\n\n${D.shifts} смен, ${mmss(D.toi)} на льду. Клиент увидит его на странице заказа и в кабинете.`)) return;
+      S.patch(o.id, { status: "sent", result: { url: D.url, toi: D.toi, shifts: D.shifts, periods: D.periods } });
+      log(o.id, "op", "Отправил клиенту результат расчёта"); toast(`#${o.id}: результат отправлен клиенту`); render();
+    });
     const media = o.real && window.ADMIN_MEDIA;
     if (media) { loadShift(o, card.cur, true); overlayLoop(o); }
     else loadShift(o, card.cur, false);

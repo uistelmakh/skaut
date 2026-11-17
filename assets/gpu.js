@@ -262,6 +262,8 @@
     const P = s?.published;
     if (!P) return s?.state === "done" ? `<p class="gpu-res wait">Расчёт закончен, но результат ещё не выложен на страницу заказа — проверять и отправлять пока нечего.</p>` : "";
     PUB.set(String(o.id), P);
+    const dr_ = window.STORE?.over(o.id).draft;            // результат — в сам заказ: админка без ключа видеокарты (телефон) тоже его увидит
+    if (window.STORE && (!dr_ || dr_.url !== P.url || (dr_.at || 0) < (P.at || 0))) window.STORE.patch(o.id, { draft: { url: P.url, toi: P.toi, shifts: P.shifts, periods: P.periods, per: P.per, at: P.at } });
     const sent = window.STORE?.over(o.id).status === "sent" && window.STORE.over(o.id).result?.url === P.url;
     const per = Object.entries(P.per || {}).map(([k, v]) => `<li>${k === "4" ? "Овертайм" : `Период ${k}`}: ${v.shifts} смен, ${mmss(v.toi)}${v.warn?.length ? ` <span class="warn">· предупреждений ${v.warn.length}</span>` : ""}</li>`).join("");
     const warns = Object.entries(P.per || {}).flatMap(([k, v]) => (v.warn || []).map((w) => `<li>${k === "4" ? "ОТ" : `П${k}`}: ${esc(w)}</li>`));
