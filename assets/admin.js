@@ -253,8 +253,8 @@
     const drSent = dr && S.over(o.id).status === "sent" && S.over(o.id).result?.url === dr.url;
     const drHtml = dr ? `<div class="ac-res"><span class="ac-res-st ${drSent ? "sent" : ""}">${drSent ? "Отправлено клиенту" : "Готово к проверке"}</span>
         <b>${dr.shifts} смен · ${mmss(dr.toi)} на льду</b>
-        ${dr.per ? `<ul>${Object.entries(dr.per).map(([k, v]) => `<li><span>${k === "4" ? "Овертайм" : `${k}-й период`}</span><span>${v.shifts} смен</span><span>${mmss(v.toi)}</span></li>`).join("")}</ul>` : ""}
-        <div class="ac-res-btns"><a class="abtn" href="${esc(dr.url)}" target="_blank" rel="noopener">Открыть результат</a>${drSent ? "" : `<button class="abtn send" id="ac-res-send">Отправить клиенту</button>`}</div>
+        ${dr.per ? shiftsHtml(o, dr) : ""}
+        <div class="ac-res-btns"><a class="abtn" href="${esc(dr.url)}" target="_blank" rel="noopener">Открыть результат</a>${drSent || EDIT.has(String(o.id)) || (rebuildState(o) && !rebuildState(o).done) ? "" : `<button class="abtn send" id="ac-res-send">Отправить клиенту</button>`}</div>
         <small>${drSent ? "Клиент видит эту страницу в кабинете и на странице заказа." : "По кнопке «Открыть результат» — та самая страница, которую увидит клиент. Пока не отправишь, он её не видит."}</small></div>` : "";
     const center = `<section class="ac-center" aria-label="Видео и смены">
       ${drHtml}
@@ -395,9 +395,93 @@
     if (t == null) return toast("ИИ не отметил игрока в этой смене. Покажи его сам: V");
     v.currentTime = t; v.play().catch(() => {}); toast("К отметке ИИ");
   }
+  /* ---------- смены результата: просмотр, пометки «проверьте», правка по табло и пересборка (A6) ---------- */
+  const EDIT = new Map();                                   // заказ → {период: [{a, b}]} — правка, пока не отправлена на пересборку
+  const pname = (k) => (k === "4" ? "Овертайм" : `${k}-й период`);
+  const vkAt = (o, ts) => { if (ts == null) return null; const t = Math.max(0, Math.round(ts - 10)); const u = `https://${String(o.url).replace(/^https?:\/\//, "")}`;
+    return `${u}${u.includes("?") ? "&" : "?"}t=${Math.floor(t / 3600)}h${Math.floor(t % 3600 / 60)}m${t % 60}s`; };
+  const okTime = (v) => /^\d{1,2}[:.]\d{2}$/.test(String(v || "").trim()) && +String(v).trim().split(/[:.]/)[1] < 60;
+  const secOf = (v) => { const [m, s] = String(v).trim().split(/[:.]/); return +m * 60 + +s; };
+  function rebuildState(o) {
+    const R = S.over(o.id).rebuild, D = S.over(o.id).draft;
+    if (!R) return null;
+    if (D && (D.at || 0) > (R.at || 0)) return { done: true, R };
+    return { done: false, R, late: Date.now() / 1000 - (R.at || 0) > 50 * 60 };
+  }
+  function shiftsHtml(o, dr) {
+    const ed = EDIT.get(String(o.id)), rs = rebuildState(o);
+    const per = Object.entries(dr.per).sort((a, b) => +a[0] - +b[0]);
+    const nFlags = per.reduce((n, [, v]) => n + (v.list || []).filter((r) => r.flags?.length).length, 0);
+    const head = rs && !rs.done ? `<p class="ac-rb ${rs.late ? "bad" : ""}">${rs.late ? "Пересборка идёт дольше 50 минут — посмотрите «Журнал» или ход расчёта." : `Пересборка по правкам идёт: периоды ${esc(rs.R.periods?.join(", ") || "")}, около ${rs.R.minutes || 20} минут. Страница обновится сама.`}</p>`
+      : rs?.done && Date.now() / 1000 - (S.over(o.id).draft.at || 0) < 6 * 3600 ? `<p class="ac-rb ok">Пересборка готова — смены ниже уже новые. Проверьте ролик.</p>` : "";
+    const flagsNote = !ed && nFlags ? `<p class="ac-flags-note">Программа просит проверить ${nFlags} ${nFlags === 1 ? "смену" : nFlags < 5 ? "смены" : "смен"} — они отмечены жёлтым.</p>` : "";
+    const body = per.map(([k, v]) => {
+      const list = v.list || [];
+      if (!list.length && ed) return `<details class="ac-sp"><summary><span>${pname(k)}</span><span>${v.shifts} смен · ${mmss(v.toi)}</span></summary><p class="muted">Этот период выложен без списка смен — поправить его можно после следующей выкладки.</p></details>`;
+      if (!list.length && !ed) return `<details class="ac-sp"><summary><span>${pname(k)}</span><span>${v.shifts} смен · ${mmss(v.toi)}</span></summary><p class="muted">${v.shifts ? "Списка смен нет: результат выложен до 18.11 — смены можно поправить после следующей выкладки." : "Смен не найдено."}</p></details>`;
+      const warn = list.filter((r) => r.flags?.length).length;
+      if (ed) {
+        const rows = ed[k] || list.map((r) => ({ a: r.a, b: r.b }));
+        return `<details class="ac-sp" open><summary><span>${pname(k)}</span><span>${v.up ? "табло считает вверх" : "табло считает вниз"}</span></summary>
+          <ol class="ac-ed" data-per="${k}">${rows.map((r, i) => `<li><span>Смена ${i + 1}</span><input inputmode="numeric" aria-label="${pname(k)}, смена ${i + 1}: начало по табло" data-i="${i}" data-f="a" value="${esc(r.a || "")}" placeholder="м:сс"><span>–</span><input inputmode="numeric" aria-label="${pname(k)}, смена ${i + 1}: конец по табло" data-i="${i}" data-f="b" value="${esc(r.b || "")}" placeholder="м:сс"><button class="ac-ed-del" data-i="${i}" aria-label="Удалить смену ${i + 1}">✕</button></li>`).join("")}</ol>
+          <button class="abtn ac-ed-add" data-per="${k}">+ смена</button></details>`;
+      }
+      return `<details class="ac-sp"${warn ? " open" : ""}><summary><span>${pname(k)}</span><span>${v.shifts} смен · ${mmss(v.toi)}${warn ? ` · <b class="w">проверить ${warn}</b>` : ""}</span></summary>
+        <ol class="ac-sl">${list.map((r) => `<li class="${r.flags?.length ? "flag" : ""}"><div class="ac-sl-h"><b>Смена ${r.n}</b><span>${esc(r.a || "?")}–${esc(r.b || "?")}</span><span>${mmss(r.sec)} на льду</span></div>
+          ${r.flags?.length ? `<ul class="ac-sl-f">${r.flags.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
+          <div class="ac-sl-a">${r.at != null ? `<a href="${esc(dr.url.replace(/index\.html.*$/, `p${k}/all_shifts.mp4#t=${r.at}`))}" target="_blank" rel="noopener">Смотреть смену</a>` : ""}${vkAt(o, r.ts) ? `<a href="${esc(vkAt(o, r.ts))}" target="_blank" rel="noopener">В трансляции</a>` : ""}</div></li>`).join("")}</ol></details>`;
+    }).join("");
+    const canEdit = per.some(([, v]) => (v.list || []).length);
+    const btns = ed ? `<div class="ac-res-btns"><button class="abtn send" id="ac-ed-go">Пересобрать</button><button class="abtn" id="ac-ed-cancel">Отмена</button></div>
+        <small>Время пишите так, как на табло трансляции. Пересобираются только изменённые периоды: машина около 20 минут, около 10 ₽. Клиенту ничего не уходит, пока не нажмёте «Отправить клиенту»${S.over(o.id).status === "sent" ? " — но этот заказ уже отправлен: клиент увидит новые смены по той же ссылке сразу после пересборки" : ""}.</small><p class="ac-ed-err" id="ac-ed-err" role="alert"></p>`
+      : canEdit && !(rs && !rs.done) ? `<div class="ac-res-btns"><button class="abtn" id="ac-ed-open">Править смены</button></div>` : "";
+    return `<div class="ac-shifts">${head}${flagsNote}${body}${btns}</div>`;
+  }
+  function bindShifts(o) {
+    const id = String(o.id), D = S.over(o.id).draft;
+    if (!D?.per) return;
+    $("#ac-ed-open")?.addEventListener("click", () => {
+      EDIT.set(id, Object.fromEntries(Object.entries(D.per).filter(([, v]) => (v.list || []).length).map(([k, v]) => [k, v.list.map((r) => ({ a: r.a, b: r.b }))]))); render();
+    });
+    $("#ac-ed-cancel")?.addEventListener("click", () => { EDIT.delete(id); render(); });
+    const ed = EDIT.get(id); if (!ed) return;
+    document.querySelectorAll(".ac-ed input").forEach((inp) => inp.addEventListener("input", () => {
+      const k = inp.closest(".ac-ed").dataset.per; ed[k][+inp.dataset.i][inp.dataset.f] = inp.value.trim();
+    }));
+    document.querySelectorAll(".ac-ed-del").forEach((b) => b.addEventListener("click", () => {
+      const k = b.closest(".ac-ed").dataset.per; ed[k].splice(+b.dataset.i, 1); render();
+    }));
+    document.querySelectorAll(".ac-ed-add").forEach((b) => b.addEventListener("click", () => { ed[b.dataset.per].push({ a: "", b: "" }); render(); }));
+    $("#ac-ed-go")?.addEventListener("click", async (e) => {
+      const err = $("#ac-ed-err"), btn = e.currentTarget;
+      const changed = {}, problems = [];
+      for (const [k, rows] of Object.entries(ed)) {
+        const v = D.per[k] || {}, was = (v.list || []).map((r) => `${r.a}-${r.b}`).join("|");
+        rows.forEach((r, i) => {
+          if (!okTime(r.a) || !okTime(r.b)) problems.push(`${pname(k)}, смена ${i + 1}: время в виде м:сс, например 9:13`);
+          else if (v.up ? secOf(r.b) <= secOf(r.a) : secOf(r.b) >= secOf(r.a)) problems.push(`${pname(k)}, смена ${i + 1}: ${v.up ? "на табло, которое считает вверх, конец должен быть больше начала" : "на табло, которое считает вниз, конец должен быть меньше начала"}`);
+          else if (secOf(r.a) > (v.len || 1200) || secOf(r.b) > (v.len || 1200)) problems.push(`${pname(k)}, смена ${i + 1}: больше длины периода`);
+        });
+        const now = rows.map((r) => `${String(r.a).replace(".", ":")}-${String(r.b).replace(".", ":")}`).join("|");
+        if (now !== was) changed[k] = rows.map((r) => ({ a: String(r.a).replace(".", ":"), b: String(r.b).replace(".", ":") }));
+      }
+      if (problems.length) { err.textContent = problems.slice(0, 4).join(". ") + "."; return; }
+      if (!Object.keys(changed).length) { err.textContent = "Вы ничего не изменили."; return; }
+      if (!window.GPU?.key()) { err.textContent = "Пересборку запускает видеокарта: введите ключ видеокарты на этом устройстве (кнопка с ключом в верхней панели)."; return; }
+      if (!confirm(`Пересобрать ${Object.keys(changed).map(pname).join(", ").toLowerCase()} по вашим правкам?\n\nМашина около 20 минут, около 10 ₽.`)) return;
+      btn.disabled = true; err.textContent = "Запускаю…";
+      try {
+        const r = await window.GPU.rebuild(o.id, changed);
+        S.patch(o.id, { rebuild: { job: r.job, at: r.at, periods: r.periods, minutes: r.minutes, edits: changed } });
+        log(o.id, "op", `Правка смен: ${Object.keys(changed).map(pname).join(", ").toLowerCase()} — пересборка запущена`);
+        EDIT.delete(id); toast(`#${o.id}: пересборка запущена, около ${r.minutes} мин`); render();
+      } catch (x) { btn.disabled = false; err.textContent = x.body?.note || window.GPU.why?.(x) || `Не вышло: ${x.message}`; }
+    });
+  }
   function bindCard(o) {
     drawTl(o); drawDecide(o);
     if ($("#ac-gpu")) cleanup.push(window.GPU.mountCard($("#ac-gpu"), S.get(o.id), () => render()));   // видеокарта (assets/gpu.js)
+    bindShifts(o);
     $("#ac-res-send")?.addEventListener("click", () => {                // отправка результата расчёта клиенту — с любого устройства
       const D = S.over(o.id).draft; if (!D) return;
       if (!confirm(`Отправить клиенту результат заказа #${o.id}?\n\n${D.shifts} смен, ${mmss(D.toi)} на льду. Клиент увидит его на странице заказа и в кабинете.`)) return;

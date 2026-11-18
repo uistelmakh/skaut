@@ -39,7 +39,8 @@
   const status = (id) => api("GET", { action: "status", id: String(id) });
   const stop = (id) => api("POST", null, { action: "stop", id: String(id) });
   const ping = () => api("GET", { action: "ping" }).then((r) => !!r.key);
-  const live = (id) => api("GET", { action: "live", id: String(id) });   // живая сводка с машины (tools/gpu_vm/live.py)
+  const live = (id) => api("GET", { action: "live", id: String(id) });
+  const rebuild = (id, edits) => api("POST", null, { action: "rebuild", id: String(id), edits });   // пересборка смен по правкам (A6)   // живая сводка с машины (tools/gpu_vm/live.py)
 
   /* ---------- экран «Ход расчёта»: что делает машина прямо сейчас, человеческими словами ---------- */
   const dur = (s) => { s = Math.max(0, Math.round(s || 0)); return s < 60 ? `${s} с` : s < 600 ? `${Math.floor(s / 60)} мин ${String(s % 60).padStart(2, "0")} с` : s < 3600 ? `${Math.round(s / 60)} мин` : `${Math.floor(s / 3600)} ч ${String(Math.floor(s % 3600 / 60)).padStart(2, "0")} мин`; };
@@ -246,6 +247,7 @@
     bad_number: "Номер игрока — только цифры.", bad_kit: "Неизвестный цвет формы.",
     cloud: "Облако Яндекса не ответило. Проверь баланс в консоли (Биллинг) и повтори.",
     server: "Пускатель в облаке споткнулся на этом запросе. Расчёт от этого не останавливается.",
+    no_result: "У заказа нет расчёта — пересобирать нечего.", bad_edits: "Правки не поняты — проверьте время смен.",
     not_configured: "Пускатель ещё не подключён (GPU_API в config.js пуст).",
   };
   const why = (e) => WHY[e.message] || `Ошибка: ${e.message}`;
@@ -357,5 +359,5 @@
     return () => { alive = false; clearTimeout(t); closeLive?.(); };
   }
 
-  window.GPU = { key, setKey, run, estimate, status, stop, ping, live, openLive, liveHtml, syslog, openJournal, journalHtml, resultFor, autoRun, mountCard, ready: () => !!API_() };
+  window.GPU = { key, setKey, run, rebuild, why, estimate, status, stop, ping, live, openLive, liveHtml, syslog, openJournal, journalHtml, resultFor, autoRun, mountCard, ready: () => !!API_() };
 })();
