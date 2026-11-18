@@ -485,7 +485,7 @@
     $("#ac-res-send")?.addEventListener("click", () => {                // отправка результата расчёта клиенту — с любого устройства
       const D = S.over(o.id).draft; if (!D) return;
       if (!confirm(`Отправить клиенту результат заказа #${o.id}?\n\n${D.shifts} смен, ${mmss(D.toi)} на льду. Клиент увидит его на странице заказа и в кабинете.`)) return;
-      S.patch(o.id, { status: "sent", result: { url: D.url, toi: D.toi, shifts: D.shifts, periods: D.periods } });
+      S.patch(o.id, { status: "sent", result: { url: D.url, toi: D.toi, shifts: D.shifts, periods: D.periods, until: D.until || ((D.at || Date.now() / 1000) + 60 * 86400) } });
       log(o.id, "op", "Отправил клиенту результат расчёта"); toast(`#${o.id}: результат отправлен клиенту`); render();
     });
     const media = o.real && window.ADMIN_MEDIA;

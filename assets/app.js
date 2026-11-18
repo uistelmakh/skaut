@@ -482,7 +482,7 @@
     const R = S.over(o.id).result;          // настоящий результат: страница по ссылке (tools/gpu.py publish)
     const steps = STEPS.map(([h, p], i) => `<li class="${i < cur || isDone ? "is-done" : i === cur ? "is-now" : ""}" style="--i:${i}">
         <span class="st-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
-        <div><b>${h}</b><span>${i === cur && !isDone ? p : i < cur || isDone ? (i === 3 ? "Ссылка на результат уже в Telegram" : i === 0 ? "Сообщение получили" : "Готово") : p}</span>${i === 0 && cur === 0 && o.msg ? `<a class="btn btn--small st-again" href="${tgLink(o.msg)}" target="_blank" rel="noopener">${ICON.tg}Открыть Telegram ещё раз</a>` : ""}</div></li>`).join("");
+        <div><b>${h}</b><span>${i === cur && !isDone ? p : i < cur || isDone ? (i === 3 ? (R ? "Результат по ссылке справа" : "Готово") : i === 0 ? "Сообщение получили" : "Готово") : p}</span>${i === 0 && cur === 0 && o.msg ? `<a class="btn btn--small st-again" href="${tgLink(o.msg)}" target="_blank" rel="noopener">${ICON.tg}Открыть Telegram ещё раз</a>` : ""}</div></li>`).join("");
     const kit = kitBy(o.kit), tg = o.tg || o.client?.tg || "";
     return `<div class="wrap st">
       <div class="st-head rise">
@@ -494,7 +494,7 @@
       <div class="st-grid">
         <ol class="st-steps rise" style="--d:1" aria-live="polite">${steps}</ol>
         <div class="st-side rise" style="--d:2">
-          ${isDone ? (R ? `<a class="st-result" href="${esc(R.url)}" target="_blank" rel="noopener"><span class="num">${mmss(R.toi)}</span><span>на льду, ${R.shifts} ${plural(R.shifts, "смена", "смены", "смен")}</span><span class="btn btn--accent">Открыть результат</span></a>` : `<a class="st-result" href="#/result?own"><span class="num">${T.toi}</span><span>на льду, ${T.shifts} смен</span><span class="btn btn--accent">Открыть результат</span></a>`) : `
+          ${isDone ? (R ? `<a class="st-result" href="${esc(R.url)}" target="_blank" rel="noopener"><span class="num">${mmss(R.toi)}</span><span>на льду, ${R.shifts} ${plural(R.shifts, "смена", "смены", "смен")}</span><span class="btn btn--accent">Открыть результат</span></a>${R.until ? `<p class="st-keep">Видео хранится до <b>${new Date(R.until * 1000 - 86400000).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</b>. Скачайте его на странице результата, чтобы оно осталось у вас.</p>` : ""}` : `<a class="st-result" href="#/result?own"><span class="num">${T.toi}</span><span>на льду, ${T.shifts} смен</span><span class="btn btn--accent">Открыть результат</span></a>`) : `
           <div class="st-soon" aria-label="Пример того, что придёт">
             <div class="st-soon-reel"><img src="${HERO.poster}" alt="" loading="lazy"><svg viewBox="0 0 90 160" aria-hidden="true"><ellipse cx="45" cy="112" rx="24" ry="7"/></svg><b>№${esc(o.number)}</b></div>
             <div class="st-soon-txt"><b>Твой ролик появится здесь</b><span>И цифры игры: время на льду, смены, голы при тебе.</span>
@@ -606,7 +606,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261118a";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261118b";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша

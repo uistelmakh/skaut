@@ -1007,3 +1007,7 @@ body[data-route="gate"] .top-nav, body[data-route="gate"] .top-cta, body[data-ro
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
   html { scroll-behavior: auto; }
 }
+
+/* срок хранения видео результата (V8) */
+.st-keep { margin: 12px 0 0; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
+.st-keep b { color: var(--ink); }

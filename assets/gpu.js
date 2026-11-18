@@ -259,7 +259,7 @@
   const ST = { waiting: "ждём", starting: "машина создаётся", running: "считает", done: "готово", failed: "ошибка", killed: "остановлено", lost: "машины нет", none: "ждёт запуска" };
   /* выложенный результат: итог, предупреждения и ссылка для проверки; отправка клиенту — кнопкой */
   const PUB = new Map();
-  const resultFor = (id) => { const P = PUB.get(String(id)); return P ? { url: P.url, toi: P.toi, shifts: P.shifts, periods: P.periods } : null; };
+  const resultFor = (id) => { const P = PUB.get(String(id)); return P ? { url: P.url, toi: P.toi, shifts: P.shifts, periods: P.periods, until: P.until || ((P.at || Date.now() / 1000) + 60 * 86400) } : null; };
   function resHtml(s, o) {
     const P = s?.published;
     if (!P) return s?.state === "done" ? `<p class="gpu-res wait">Расчёт закончен, но результат ещё не выложен на страницу заказа — проверять и отправлять пока нечего.</p>` : "";
@@ -335,7 +335,7 @@
       el.querySelector("#gpu-send")?.addEventListener("click", () => {
         const P = s.published;
         if (!confirm(`Отправить клиенту результат заказа #${o.id}?\n\n${P.shifts} смен, ${mmss(P.toi)} на льду. Клиент увидит его на странице заказа и в кабинете.`)) return;
-        window.STORE.patch(o.id, { status: "sent", result: { url: P.url, toi: P.toi, shifts: P.shifts, periods: P.periods } });
+        window.STORE.patch(o.id, { status: "sent", result: resultFor(o.id) });
         draw(s); onLaunch?.();
       });
       el.querySelector("#gpu-forget").addEventListener("click", () => { if (confirm("Убрать ключ видеокарты с этого устройства?")) { setKey(""); draw(); } });
