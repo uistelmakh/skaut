@@ -1011,3 +1011,127 @@ body[data-route="gate"] .top-nav, body[data-route="gate"] .top-cta, body[data-ro
 /* срок хранения видео результата (V8) */
 .st-keep { margin: 12px 0 0; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
 .st-keep b { color: var(--ink); }
+
+/* ================= Экран заказа V9 =================
+   Одна смелая вещь — игрок карточкой-свитером: номер пишется прямо на спине, свитер красится в цвет формы.
+   Всё вокруг тихое: шаги по чёрной линии, как остальной сайт, белые поля на льду. */
+.of { padding-top: 10px; padding-bottom: 40px; }
+.of-head .d2 { font-size: clamp(40px, 10.6vw, 72px); }
+.of-head .lead { margin-top: 14px; }
+.of-head .free { margin-top: 18px; }
+.of-step { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 12px; margin-top: 34px; padding-top: 18px; border-top: 1.5px solid var(--ink); }
+.of-n { font: 900 46px/.8 var(--display); font-variant-numeric: lining-nums; }
+.of-step h2 { font: 600 22px/1.15 var(--text); letter-spacing: -.01em; margin: 2px 0 14px; }
+.of-sub { font-size: var(--t-s); color: var(--ink-2); margin: -6px 0 16px; max-width: 36em; }
+.of-hint { font-size: var(--t-s); color: var(--ink-2); margin-top: 10px; }
+.of-lbl { display: block; font-weight: 600; font-size: var(--t-s); margin: 22px 0 8px; }
+.of-seg { grid-auto-flow: row; grid-template-columns: 1fr 1fr 1fr 1.5fr; }
+.of-seg button { height: 48px; white-space: nowrap; }
+
+/* ссылка: главное поле экрана */
+.of-link { position: relative; display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 0 8px 0 18px; border-radius: var(--r-m); background: var(--board); box-shadow: inset 0 0 0 1.5px transparent; transition: box-shadow .2s; }
+.of-link:focus-within { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.of-link.ok { box-shadow: inset 0 0 0 2px var(--ink); }
+.of-link:has(.bad) { box-shadow: inset 0 0 0 1.5px var(--goal); }
+.of-link-ico { flex: none; width: 22px; height: 22px; fill: none; stroke: var(--ink-3); stroke-width: 2; stroke-linecap: round; }
+.of-link.ok .of-link-ico { stroke: var(--ink); }
+.of-url { flex: 1; min-width: 0; height: 64px; border: 0; background: none; outline: none; font: 500 17px var(--text); color: var(--ink); text-overflow: ellipsis; }
+.of-url::placeholder { color: var(--ink-3); }
+.of-svc { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.of-svc:empty { display: none; }
+.of-svc svg { width: 22px; height: 22px; padding: 4px; border-radius: 50%; background: var(--mark); fill: none; stroke: #000; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; animation: of-tick .45s var(--ease) both; }
+@keyframes of-tick { from { stroke-dashoffset: 24; } }
+.of-paste { flex: none; height: 48px; padding: 0 18px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 600; font-size: 14px; }
+.of-paste:active { transform: scale(.97); }
+
+/* игроки */
+.of-roster { display: grid; gap: 12px; }
+.of-p { position: relative; display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 14px; padding: 14px; border-radius: var(--r-l); background: var(--board); box-shadow: var(--e1); }
+.of-p.fresh { animation: of-in .5s var(--spring) both; }
+@keyframes of-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+.of-sw { position: relative; align-self: start; aspect-ratio: 200 / 172; container-type: inline-size; }
+.of-sw-svg { width: 100%; height: 100%; overflow: visible; }
+.of-sw-body { fill: var(--kit); stroke: rgba(0, 0, 0, .14); stroke-width: 1.5; transition: fill .3s var(--ease); }
+.of-sw-stripe { fill: var(--on); opacity: .9; transition: fill .3s; }
+.of-sw-collar { fill: none; stroke: var(--on); stroke-width: 4; stroke-linecap: round; opacity: .9; }
+.of-plate { position: absolute; left: 22%; right: 22%; top: 17%; text-align: center; font: 800 10.5cqw/1 var(--display); text-transform: uppercase; letter-spacing: .05em; color: var(--on); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.of-plate.empty { opacity: .4; }
+.of-num { position: absolute; left: 21%; width: 58%; top: 27%; height: 52%; padding: 0; border: 0; border-radius: var(--r-s); background: transparent; text-align: center; font: 900 46cqw/1 var(--display); font-variant-numeric: lining-nums; letter-spacing: -.02em; color: var(--on); caret-color: var(--on); outline: none; }
+.of-num::placeholder { color: var(--on); opacity: .28; }
+.of-num:focus { background: color-mix(in srgb, var(--on) 12%, transparent); }
+.of-num.bad { box-shadow: 0 0 0 3px var(--goal); }
+.of-pc { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.of-ph { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+.of-ph b { font-size: var(--t-s); font-weight: 600; color: var(--ink-2); }
+.of-x { width: 32px; height: 32px; margin: -4px -4px 0 0; display: grid; place-items: center; border-radius: 50%; background: var(--ice); }
+.of-x svg { width: 16px; height: 16px; fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
+.of-kits { display: grid; grid-template-columns: repeat(4, 32px); gap: 8px; }
+.of-kit { width: 32px; height: 32px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .16); transition: transform .2s var(--ease), box-shadow .2s; }
+.of-kit[aria-pressed="true"] { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .16), 0 0 0 2px var(--board), 0 0 0 4px var(--ink); }
+.of-kit:active { transform: scale(.9); }
+.of-kitname { font-size: 12px; color: var(--ink-2); margin-top: -2px; }
+.of-pc .input { height: 48px; font-size: 16px; padding: 0 14px; background: var(--ice); }
+.of-pc .input:focus { background: var(--board); }
+.of-more { justify-self: start; text-align: left; font-size: 13px; font-weight: 600; color: var(--ink-2); padding: 4px 0; }
+.of-pc .err { margin-top: 0; }
+.of-add { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 14px; align-items: center; width: 100%; padding: 14px; border-radius: var(--r-l); text-align: left; box-shadow: inset 0 0 0 1.5px var(--rule); transition: box-shadow .2s, background .2s; }
+.of-add:hover { box-shadow: inset 0 0 0 1.5px var(--ink); background: color-mix(in srgb, var(--board) 50%, transparent); }
+.of-add-sw { position: relative; display: grid; place-items: center; aspect-ratio: 200 / 172; }
+.of-add-sw svg:first-child { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: var(--ink-3); stroke-width: 2; stroke-dasharray: 6 6; }
+.of-add-sw svg:last-child { position: relative; width: 34px; height: 34px; fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
+.of-add b { display: block; font-weight: 600; font-size: 16px; }
+.of-add small { display: block; font-size: 13px; color: var(--ink-2); margin-top: 3px; }
+.of-max { padding: 8px 0 0; }
+
+/* итог заявки: на компьютере справа, на телефоне его заменяет панель с ценой внизу */
+.of-aside { display: none; }
+.of-ticket { padding: 22px 22px 20px; border-radius: var(--r-l); background: var(--board); box-shadow: var(--e2); }
+.of-t-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-bottom: 14px; border-bottom: 1.5px solid var(--ink); }
+.of-t-head b { font: 900 30px/.9 var(--display); text-transform: uppercase; }
+.of-t-head span { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.of-t-list { list-style: none; margin: 0; padding: 4px 0; }
+.of-t-list li { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.of-t-list i { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--c); color: var(--on); font: 900 22px/1 var(--display); font-style: normal; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); transition: background .3s; }
+.of-t-list b { display: block; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.of-t-list small { display: block; font-size: 12px; color: var(--ink-2); }
+.of-t-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.of-t-row span { color: var(--ink-2); } .of-t-row b { font-weight: 600; text-align: right; }
+.of-t-total { display: grid; gap: 4px; padding: 16px 0 14px; }
+.of-t-total .num { font-size: 64px; display: flex; align-items: baseline; gap: 10px; }
+.of-t-total .num small { font-size: .5em; margin-left: -.15em; }
+.of-t-total s { font: 600 16px var(--text); color: var(--ink-3); }
+.of-t-total > span:last-child { font-size: 13px; color: var(--ink-2); }
+.of-t-go { width: 100%; }
+.of-ticket .risk { grid-template-columns: 1fr 1fr; margin-top: 16px; font-size: 13px; }
+.of-proof { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; margin-top: 14px; padding: 12px; border-radius: var(--r-l); }
+.of-proof video { width: 96px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: var(--r-m); background: #111; box-shadow: 0 0 0 1.5px #000; }
+.of-proof p { font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+.of-proof b { display: block; font-size: 15px; color: var(--ink); margin-bottom: 4px; }
+.of-risk-m { margin-top: 18px; }
+
+/* на телефоне номер шага — рядом с заголовком, содержимое шага на всю ширину */
+@media (max-width: 899px) {
+  .of-step { display: block; position: relative; }
+  .of-n { position: absolute; left: 0; top: 18px; font-size: 34px; }
+  .of-step h2 { padding-left: 34px; }
+}
+@media (max-width: 380px) {
+  .of-p, .of-add { grid-template-columns: 108px minmax(0, 1fr); gap: 12px; padding: 12px; }
+  .of-kits { grid-template-columns: repeat(4, 28px); gap: 7px; }
+  .of-kit { width: 28px; height: 28px; }
+}
+@media (min-width: 560px) {
+  .of-p, .of-add { grid-template-columns: 176px minmax(0, 1fr); gap: 20px; padding: 18px; }
+  .of-kits { grid-template-columns: repeat(8, 30px); }
+  .of-kit { width: 30px; height: 30px; }
+}
+@media (min-width: 900px) {
+  .of { display: grid; grid-template-columns: minmax(0, 660px) minmax(320px, 380px); justify-content: space-between; gap: 56px; padding-top: 26px; }
+  .of-aside { display: block; position: sticky; top: 96px; align-self: start; margin-top: 8px; }
+  .of-bar, .of-risk-m { display: none; }
+  .of-step { grid-template-columns: 64px minmax(0, 1fr); margin-top: 44px; padding-top: 22px; }
+  .of-n { font-size: 64px; }
+  .of-step h2 { font-size: 26px; }
+  .of-link { min-height: 76px; }
+  .of-url { height: 72px; font-size: 19px; }
+}

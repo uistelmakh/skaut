@@ -23,7 +23,24 @@
     return j;
   }
   const orderOf = (o) => ({ id: o.id, url: o.url, number: o.number, kit: o.kit, team: o.team, scope: o.scope || "game", marker: o.marker });
-  const run = (o) => api("POST", null, { action: "run", manual: true, order: orderOf(o) });   // manual: нажата кнопка в админке
+  const run = (o, full) => api("POST", null, { action: "run", manual: true, order: { ...orderOf(o), ...(full ? { force_full: true } : {}) } });   // manual: нажата кнопка в админке; full — «Посчитать заново» (A7)
+  const dayOf = (t) => new Date(t * 1000).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  /* выбор из нескольких кнопок вместо confirm() (у него только «ОК» и «Отмена»): → значение нажатой кнопки или null */
+  function choose(title, text, buttons) {
+    return new Promise((done) => {
+      const box = document.createElement("div"); box.className = "gpu-ask"; box.setAttribute("role", "dialog"); box.setAttribute("aria-label", title);
+      box.innerHTML = `<style>.gpu-ask{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.6)}
+        .gpu-ask>div{max-width:440px;width:100%;background:var(--a-panel,#15171D);color:var(--a-ink,#ECEDF0);border:1px solid var(--a-line2,#333);border-radius:14px;padding:18px}
+        .gpu-ask h3{margin:0 0 10px;font-size:18px}.gpu-ask p{margin:0 0 8px;font-size:14px;line-height:1.45;color:var(--a-ink2,#B4B8C0)}
+        .gpu-ask .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.gpu-ask button{flex:1 1 120px;min-height:44px;border-radius:10px;border:1px solid var(--a-line2,#333);background:transparent;color:inherit;font:inherit;cursor:pointer}
+        .gpu-ask button.go{background:#3DFF2E;border-color:#3DFF2E;color:#111;font-weight:600}</style>
+        <div><h3>${esc(title)}</h3>${text.map((t) => `<p>${esc(t)}</p>`).join("")}<div class="row">${buttons.map(([label, val, cls]) => `<button data-v="${esc(val ?? "")}" class="${cls || ""}">${esc(label)}</button>`).join("")}</div></div>`;
+      const end = (v) => { box.remove(); done(v || null); };
+      box.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) end(b.dataset.v); else if (e.target === box) end(null); });
+      box.addEventListener("keydown", (e) => { if (e.key === "Escape") end(null); });
+      document.body.append(box); box.querySelector("button.go")?.focus();
+    });
+  }
   /* оценка перед запуском: периоды, минуты, рубли, запись в VK. Ничего не запускает. Держим 5 минут на заказ */
   const EST = new Map();
   const estimate = async (o) => {
@@ -128,6 +145,7 @@
       const ladder = (L.steps || []).map((s) => {
         const d = doneBy.get(s.step);
         if (d) return `<li><span>${esc(s.name)}</span><span><em style="width:${Math.max(3, Math.round(100 * d.sec / maxSec))}%"></em></span><span>${dur(d.sec)}</span></li>`;
+        if (p.reused?.steps?.includes(s.step)) return `<li class="todo"><span>${esc(s.name)}</span><span></span><span>из #${esc(p.reused.from_site_id)}</span></li>`;
         if (p.state === "идёт" && p.step === s.step) return `<li class="cur"><span>▶ ${esc(s.name)}</span><span></span><span>${dur(p.step_sec)}</span></li>`;
         if (p.state === "ошибка" && p.failed_step === s.step) return `<li class="bad"><span>✕ ${esc(s.name)}</span><span></span><span>сбой</span></li>`;
         return p.state === "нет овертайма" ? "" : `<li class="todo"><span>${esc(s.name)}</span><span></span><span>—</span></li>`;
@@ -307,7 +325,9 @@
         ${lv?.live && st !== "none" ? `<ul class="gpu-live">${(lv.live.alerts || []).slice(0, 3).map((a) => `<li class="${a.level}">${esc(a.text.length > 150 ? a.text.slice(0, 150) + "…" : a.text)}</li>`).join("")}${(lv.live.periods || []).map((p) => `<li class="${p.state === "ошибка" ? "error" : ""}">${esc(perLine(p))}</li>`).join("")}</ul>` : ""}
         ${resHtml(s, o)}
         ${busy ? "" : `<dl class="gpu-est">${est ? `<dt>Периоды</dt><dd>${esc(perText(est.periods))}</dd>
-          <dt>Оценка</dt><dd>≈ ${est.minutes} мин, ≈ ${est.rub} ₽ <small>потолок ${est.max_rub} ₽ (срок машины ${est.max_hours} ч)</small></dd>
+          ${est.reuse?.periods?.length ? `<dt>Готовый матч</dt><dd class="ok">Эта игра уже посчитана для заказа #${esc(est.reuse.from_site_id)}${est.reuse.at ? ` (${esc(dayOf(est.reuse.at))})` : ""}<small>Возьмём готовое для ${est.reuse.periods.length === 1 ? `периода ${est.reuse.periods[0]}` : `периодов ${est.reuse.periods.join(", ")}`}${Object.keys(est.reuse.why || {}).length ? `; ${esc(Object.entries(est.reuse.why).map(([p, w]) => `${p === "4" ? "овертайм" : `период ${p}`} — ${w}`).join("; "))}` : ""}</small></dd>`
+            : Object.keys(est.reuse?.why || {}).length ? `<dt>Готовый матч</dt><dd>Эта игра уже считалась, но готовое не берём<small>${esc(Object.values(est.reuse.why)[0])}</small></dd>` : ""}
+          <dt>Оценка</dt><dd${est.reuse?.periods?.length ? ' class="ok"' : ""}>≈ ${est.minutes} мин, ≈ ${est.rub} ₽ ${est.reuse?.periods?.length ? `<small><s>вместо ≈ ${est.reuse.minutes_full} мин и ≈ ${est.reuse.rub_full} ₽</s></small>` : ""}<small>потолок ${est.max_rub} ₽ (срок машины ${est.max_hours} ч)</small></dd>
           <dt>Запись в VK</dt><dd class="${est.vk.ready ? "ok" : "warn"}">${esc(est.vk.note)}</dd>
           ${est.busy ? `<dt>Видеокарта</dt><dd class="warn">занята (${esc(est.busy)}): расчёт встанет в очередь</dd>` : ""}
           <dt>Запусков сегодня</dt><dd class="${est.today >= est.limit ? "warn" : ""}">${est.today} из ${est.limit}</dd>
@@ -320,8 +340,16 @@
           if (!est) est = await estimate(o);          // без оценки не запускаем: в подтверждении должна быть цена
           const warn = est.vk.ready === false ? `\n\n${est.vk.note}. Заявка встанет в ожидание и запустится сама, когда запись будет готова.`
             : est.busy ? "\n\nВидеокарта занята: расчёт начнётся, когда она освободится." : "";
-          if (!confirm(`Запустить за ≈ ${est.rub} ₽?\n\nПериоды: ${perText(est.periods)}.\nОколо ${est.minutes} мин машины, не больше ${est.max_rub} ₽.${warn}`)) { btn.disabled = false; return; }
-          const r = await run(o);
+          let full = false;
+          if (est.reuse?.periods?.length) {        // A7: готовый расчёт этой игры — три кнопки, «Посчитать заново» стоит как обычно
+            const v = await choose(`Запустить за ≈ ${est.rub} ₽?`, [`Периоды: ${perText(est.periods)}.`,
+              `Эта игра уже посчитана для заказа #${est.reuse.from_site_id} — возьмём готовое. Около ${est.minutes} мин машины, не больше ${est.max_rub} ₽.`,
+              `«Посчитать заново» — если тот расчёт был плохим: около ${est.reuse.minutes_full} мин и ${est.reuse.rub_full} ₽.${warn.replace(/\n/g, " ")}`],
+              [["Отмена", ""], ["Посчитать заново", "full"], ["Запустить", "go", "go"]]);
+            if (!v) { btn.disabled = false; return; }
+            full = v === "full";
+          } else if (!confirm(`Запустить за ≈ ${est.rub} ₽?\n\nПериоды: ${perText(est.periods)}.\nОколо ${est.minutes} мин машины, не больше ${est.max_rub} ₽.${warn}`)) { btn.disabled = false; return; }
+          const r = await run(o, full);
           draw({ state: r.state || "starting", note: r.note || `оценка ≈ ${est.rub} ₽, не больше ${r.max_rub} ₽`, ...r });
           setTimeout(poll, 5000);
           if (mark(o.id, r.job)) onLaunch?.();

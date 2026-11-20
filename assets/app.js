@@ -86,8 +86,16 @@
   /* ---------- состояние ---------- */
   const SCOPES = [["p1", "1-й период", "1-й"], ["p2", "2-й период", "2-й"], ["p3", "3-й период", "3-й"], ["game", "Вся игра", "Вся игра"]];
   const DRAFT = "scout.order.draft";
-  const blank = { url: "", number: "", kit: "blue", team: "", howto: "", scope: "game", tg: "", who: "me", consent: false };
-  const loadDraft = () => { try { return { ...blank, ...JSON.parse(sessionStorage.getItem(DRAFT) || "{}") }; } catch { return { ...blank }; } };
+  /* черновик формы: ссылка, период, ник и список игроков (до V9 был один игрок полями number/kit/team) */
+  const blankOrder = () => ({ url: "", scope: "game", tg: "", players: [{ number: "", kit: "blue", team: "", howto: "" }] });
+  const loadDraft = () => {
+    try {
+      const d = JSON.parse(sessionStorage.getItem(DRAFT) || "{}"), b = blankOrder();
+      const players = Array.isArray(d.players) && d.players.length ? d.players.slice(0, 5)
+        : [{ number: d.number || "", kit: d.kit || "blue", team: d.team || "", howto: d.howto || "" }];
+      return { url: d.url || b.url, scope: d.scope || b.scope, tg: d.tg || b.tg, players: players.map((p) => ({ ...b.players[0], ...p })) };
+    } catch { return blankOrder(); }
+  };
   const saveDraft = () => { try { sessionStorage.setItem(DRAFT, JSON.stringify(state.order)); } catch { /* без хранилища черновик живёт до перезагрузки */ } };
   const state = { shift: 2, order: loadDraft() };
   const RISK = ["Ничего не нужно делать", "Результат за сутки", "Оплата после результата", "Не нашли? Не платишь"];
@@ -121,7 +129,7 @@
     const faq = [
       ["А если найдёт не меня?", "Каждую игру после ИИ проверяет человек, смену за сменой. Если мы не уверены, что это ты, такой смены в результате не будет. Не нашли тебя совсем? Ничего не платишь."],
       ["Какие трансляции подходят?", "Запись игры на VK Видео, YouTube или Rutube, где на спине виден номер. Лига любая. Видео с телефона и файлы из облака пока не разбираем. Вставь ссылку в форму: она сразу скажет, подходит или нет."],
-      ["Можно детскую игру?", "Да, с согласия родителей. Видео ребёнка видишь только ты по личной ссылке. Мы его никуда не публикуем."],
+      ["Можно заказать не себе?", "Да. Тренеру, другу, кому угодно: нужен только номер на спине и цвет формы. Можно сразу несколько игроков из одной игры. Видео видит только тот, кто заказал, по личной ссылке."],
       ["Где мои данные?", `На серверах в России. Лица мы не распознаём: ищем по номеру и цвету формы. Удалим всё по первой просьбе. Подробно: <a class="link" href="#/privacy">что мы храним и зачем</a>.`],
       ["Как работает пакет?", `Берёшь 5 или 10 игр и присылаешь их, когда играешь. Пакет действует ${OFFER.packMonths} месяцев. Платишь после первого результата. Не нашли тебя в игре? Она не списывается.`],
     ].map(([q, a], i) => `<details class="faq-item"${i < 3 ? " open" : ""}><summary>${q}</summary><p>${a}</p></details>`).join("");
@@ -135,7 +143,7 @@
           ${freePill()}
           <div class="hero-cta"><a class="btn btn--accent btn--big" href="#/order">${ctaText()}</a><a class="link" href="#/result">Смотреть пример</a></div>
           ${riskList()}
-          <p class="hero-parent">Играет ребёнок? Пришли его номер. Видео увидишь только ты.<br>Тренер или капитан? <a class="link" href="#/" data-jump="team">Разберём всю команду</a>.</p>
+          <p class="hero-parent">Следишь не за собой? Нужен только номер на спине. Можно сразу несколько игроков.<br>Тренер или капитан? <a class="link" href="#/" data-jump="team">Разберём всю команду</a>.</p>
         </div>
       </div>
       <div class="hero-product rise" style="--d:2">
@@ -328,127 +336,294 @@
     return bad("С этого сайта пока не разбираем. Подходят VK Видео, YouTube и Rutube.");
   }
 
-  function order() {
-    const o = state.order;
-    const kits = KITS.map((k) => `<button type="button" class="chip chip--dot" data-kit="${k.key}" aria-pressed="${o.kit === k.key}" aria-label="${k.title}" title="${k.title}" style="--c:${k.hex}"><i></i></button>`).join("");
-    const scopes = SCOPES.map(([k, t, short]) => `<button type="button" data-scope="${k}" aria-pressed="${o.scope === k}" aria-label="${t}">${short}</button>`).join("");
-    const who = [["me", "Я сам"], ["kid", "Мой ребёнок"]].map(([k, t]) => `<button type="button" data-who="${k}" aria-pressed="${o.who === k}">${t}</button>`).join("");
-    return `<div class="wrap order">
-      <form id="order-form" novalidate>
-        <h1 class="d2 rise">Получить смены</h1>
-        <p class="lead rise" style="--d:1">Сорок секунд. Дальше всё делаем мы, результат придёт в Telegram.</p>
-        ${freePill()}
-        <div class="form">
-          <div class="field rise" style="--d:2"><label for="f-url">Ссылка на запись игры</label>
-            <div class="input-wrap"><input class="input" id="f-url" name="url" type="url" inputmode="url" autocomplete="url" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="VK Видео, YouTube или Rutube" value="${esc(o.url)}" aria-describedby="url-note err-url"><span class="svc" id="svc"></span></div>
-            <p class="url-note" id="url-note" role="status" hidden></p>
-            <p class="err" id="err-url" role="alert" hidden>Нужна ссылка на запись игры: VK Видео, YouTube или Rutube.</p>
-            <p class="hint">Нет ссылки под рукой? <button type="button" class="link" id="paste-demo">Заполнить примером</button></p></div>
-          <div class="field rise" style="--d:3"><label for="f-num">Номер на спине и цвет формы</label>
-            <div class="num-field"><input class="input num-input" id="f-num" name="number" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="next" placeholder="19" value="${esc(o.number)}" aria-describedby="err-num">
-              <div class="preview" id="preview" aria-hidden="true"><div class="who"><span class="bub" id="pv-num">19</span><span class="fig"></span><span class="ell"></span></div></div></div>
-            <p class="err" id="err-num" role="alert" hidden>Номер на спине: от 1 до 99.</p>
-            <div class="chips kits" id="kits" role="group" aria-label="Цвет формы">${kits}</div>
-            <p class="hint" id="kit-name" aria-live="polite"></p></div>
-          <div class="field"><label for="f-team">За какую команду играет</label>
-            <input class="input" id="f-team" name="team" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="next" maxlength="60" placeholder="Например, РМАТ" value="${esc(o.team)}" aria-describedby="err-team">
-            <p class="err" id="err-team" role="alert" hidden>Напиши название команды, как на табло.</p></div>
-          <div class="field"><label for="f-howto">Как узнать игрока <span class="opt">необязательно</span></label>
-            <input class="input" id="f-howto" name="howto" autocomplete="off" enterkeyhint="next" maxlength="120" placeholder="Левша, белый шлем, капитанская «К»" value="${esc(o.howto)}"></div>
-          <div class="field"><span class="lbl" id="lbl-scope">Период или вся игра</span><div class="seg" id="scopes" role="group" aria-labelledby="lbl-scope">${scopes}</div></div>
-          <div class="field"><span class="lbl" id="lbl-who">Кто играет</span><div class="seg seg--2" id="who" role="group" aria-labelledby="lbl-who">${who}</div>
-            <label class="check" id="consent-box" ${o.who === "kid" ? "" : "hidden"}><input type="checkbox" id="f-consent" ${o.consent ? "checked" : ""} aria-describedby="err-consent"><span>Я родитель или есть согласие родителей</span></label>
-            <p class="err" id="err-consent" role="alert" hidden>Для детской игры нужно согласие родителей. Отметь галочку.</p></div>
-          <div class="field"><label for="f-tg">Твой ник в Telegram <span class="opt">необязательно</span></label>
-            <div class="input-wrap at"><span class="at-sign" aria-hidden="true">@</span><input class="input" id="f-tg" name="tg" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send" maxlength="32" placeholder="ник без @" value="${esc(o.tg)}" aria-describedby="err-tg tg-hint"></div>
-            <p class="err" id="err-tg" role="alert" hidden>Ник латиницей, 4–32 знака: буквы, цифры и «_». Или оставь поле пустым.</p>
-            <p class="hint" id="tg-hint">Нет ника или не знаешь его? Оставь пустым: ответим на твоё сообщение в Telegram.</p></div>
-        </div>
-        <p class="cap order-privacy">${ICON.check}Видео видишь только ты, по личной ссылке. Ничего не публикуем, удалим по первой просьбе.</p>
-        <div class="order-bar"><div class="ob-price"><span class="num">${pilot ? "0" : PRICES[0].price}<small>₽</small></span><span>${pilot ? "бесплатно, без карты" : "оплата после результата"}</span></div><button class="btn btn--accent" type="submit">Отправить заявку</button></div>
-        <p class="cap order-legal">Отправляя заявку, соглашаешься с <a class="link" href="#/privacy">обработкой данных</a> и <a class="link" href="#/terms">условиями</a>.</p>
-      </form>
-      <aside class="order-aside"><div class="reel" style="max-width:340px"><video src="${HERO.src}" poster="${HERO.poster}" autoplay muted loop playsinline preload="metadata" aria-label="Пример ролика без звука: игрок №${O.number} в зелёной обводке"></video></div>
-        <p class="cap" style="margin-top:14px;max-width:340px">Так выглядит ролик из настоящего заказа. Его и все смены пришлём завтра.</p>${riskList()}</aside>
+  /* Экран заказа (V9). Игрок — карточка-свитер: номер пишется прямо на спине, цвет свитера — цвет формы.
+     Несколько игроков из одной игры — несколько заказов одной заявки (поле group): каждый считается отдельно,
+     а общая часть расчёта матча берётся из первого (A7, docs/specs/A7-one-match-many-players.md). */
+  const MAXP = 5;
+  const SW = "M66 8 Q100 20 134 8 L172 22 Q190 30 193 48 L198 100 L164 106 L161 70 L161 162 Q100 170 39 162 L39 70 L36 106 L2 100 L7 48 Q10 30 28 22 Z";
+  const onKit = (k) => (["white", "yellow"].includes(k) ? "#000" : "#fff");
+  const svcName = (url) => checkUrl(url)?.ok ? checkUrl(url).svc : "";
+  const numOk = (n) => /^\d{1,2}$/.test(n) && +n >= 1;
+  const priceOf = (n) => {
+    const one = PRICES[0].price, free = pilot ? Math.min(n, OFFER.freeLeft) : 0;
+    return { total: (n - free) * one, full: n * one, free };
+  };
+  const playersWord = (n) => `${n} ${plural(n, "игрок", "игрока", "игроков")}`;
+
+  function sweater(i) {
+    return `<svg class="of-sw-svg" viewBox="0 0 200 172" aria-hidden="true">
+      <defs><clipPath id="ofc${i}"><path d="${SW}"/></clipPath></defs>
+      <path class="of-sw-body" d="${SW}"/>
+      <g class="of-sw-stripe" clip-path="url(#ofc${i})"><rect x="0" y="136" width="200" height="8"/><rect x="0" y="149" width="200" height="4"/><rect x="0" y="78" width="42" height="8"/><rect x="158" y="78" width="42" height="8"/></g>
+      <path class="of-sw-collar" d="M78 11 Q100 25 122 11"/>
+    </svg>`;
+  }
+
+  function playerCard(p, i, n, fresh) {
+    const kit = kitBy(p.kit);
+    const kits = KITS.map((k) => `<button type="button" class="of-kit" data-kit="${k.key}" aria-pressed="${p.kit === k.key}" aria-label="${k.title} форма" title="${k.title}" style="--c:${k.hex}"></button>`).join("");
+    return `<div class="of-p${fresh ? " fresh" : ""}" data-i="${i}" role="group" aria-label="Игрок ${i + 1}">
+      <div class="of-sw" style="--kit:${kit.hex};--on:${onKit(kit.key)}">
+        ${sweater(i)}
+        <span class="of-plate${p.team ? "" : " empty"}" aria-hidden="true">${esc(p.team || "Команда")}</span>
+        <input class="of-num" data-f="number" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" enterkeyhint="next" placeholder="00" value="${esc(p.number)}" aria-label="Игрок ${i + 1}: номер на спине" aria-describedby="of-err-num-${i}">
+      </div>
+      <div class="of-pc">
+        <div class="of-ph"><b>Игрок ${i + 1}</b>${n > 1 ? `<button type="button" class="of-x" data-act="del" aria-label="Убрать игрока ${i + 1}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>` : ""}</div>
+        <div class="of-kits" role="group" aria-label="Игрок ${i + 1}: цвет формы">${kits}</div>
+        <p class="of-kitname" aria-live="polite">${kit.title} форма</p>
+        <input class="input of-team" data-f="team" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="next" maxlength="60" placeholder="Команда, как на табло" value="${esc(p.team)}" aria-label="Игрок ${i + 1}: команда" aria-describedby="of-err-team-${i}">
+        ${p.howto || p.showHow ? `<input class="input of-how" data-f="howto" autocomplete="off" enterkeyhint="next" maxlength="120" placeholder="Левша, белый шлем, капитан" value="${esc(p.howto)}" aria-label="Игрок ${i + 1}: приметы">`
+          : `<button type="button" class="of-more" data-act="how">+ Приметы, если номер плохо видно</button>`}
+        <p class="err" id="of-err-num-${i}" role="alert" hidden>Номер на спине: от 1 до 99.</p>
+        <p class="err" id="of-err-team-${i}" role="alert" hidden>Напиши команду, как на табло.</p>
+      </div>
     </div>`;
   }
 
-  function orderMessage(o) {
-    const sc = SCOPES.find((s) => s[0] === o.scope);
-    return [`Привет! ${o.who === "kid" ? "Хочу смены ребёнка" : "Хочу свои смены"}. Заказ №${o.id}`, `Игра: ${o.url}`, `Номер: ${o.number}, форма ${kitBy(o.kit).title.toLowerCase()}`, `Играет за: ${o.team}`, o.howto ? `Как узнать: ${o.howto}` : "",
-      `Разобрать: ${sc[1].toLowerCase()}`, o.who === "kid" ? "Игрок: ребёнок, согласие родителей есть" : "", o.tg ? `Ответить: @${o.tg}` : ""].filter(Boolean).join("\n");
+  function rosterHtml(fresh = -1) {
+    const ps = state.order.players, n = ps.length, one = PRICES[0].price;
+    const left = pilot ? OFFER.freeLeft - n : 0;
+    const add = n < MAXP ? `<button type="button" class="of-add" data-act="add">
+        <span class="of-add-sw" aria-hidden="true"><svg viewBox="0 0 200 172"><path d="${SW}"/></svg>${ICON.plus}</span>
+        <span><b>Ещё игрок из этой игры</b><small>${pilot && left > 0 ? "Тоже бесплатно, если места пилота остались" : `Отдельный разбор, +${one} ₽`}</small></span>
+      </button>` : `<p class="cap of-max">В одной заявке до ${MAXP} игроков. Нужна вся команда? <a class="link" href="${tgLink(TEAM_MSG)}" target="_blank" rel="noopener">Напиши нам</a>.</p>`;
+    return ps.map((p, i) => playerCard(p, i, n, i === fresh)).join("") + add;
+  }
+
+  function ticketList() {
+    return state.order.players.map((p) => {
+      const k = kitBy(p.kit);
+      return `<li><i style="--c:${k.hex};--on:${onKit(k.key)}">${esc(p.number || "?")}</i><span><b>${p.number ? `№${esc(p.number)}` : "Номер не указан"}${p.team ? `, ${esc(p.team)}` : ""}</b><small>${k.title.toLowerCase()} форма</small></span></li>`;
+    }).join("");
+  }
+
+  function order() {
+    const o = state.order, n = o.players.length, pr = priceOf(n);
+    const scopes = SCOPES.map(([k, t, short]) => `<button type="button" data-scope="${k}" aria-pressed="${o.scope === k}" aria-label="${t}">${short}</button>`).join("");
+    const svc = svcName(o.url);
+    return `<div class="wrap of">
+      <form id="order-form" class="of-form" novalidate>
+        <header class="of-head">
+          <h1 class="d2 rise">Пришли игру.<br>Найдём каждую смену.</h1>
+          <p class="lead rise" style="--d:1">Ссылка на трансляцию и номер на спине. Больше ничего не нужно. Можно сразу несколько игроков из одной игры.</p>
+          ${freePill()}
+        </header>
+
+        <section class="of-step rise" style="--d:2" aria-labelledby="of-s1">
+          <span class="of-n" aria-hidden="true">1</span>
+          <div class="of-sb">
+            <h2 id="of-s1">Игра</h2>
+            <div class="of-link${svc ? " ok" : ""}" id="of-link">
+              <svg class="of-link-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>
+              <input class="of-url" id="f-url" name="url" type="url" inputmode="url" autocomplete="url" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="Ссылка на запись игры" value="${esc(o.url)}" aria-label="Ссылка на запись игры" aria-describedby="url-note err-url">
+              <span class="of-svc" id="svc">${svc ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>${svc}` : ""}</span>
+              <button type="button" class="of-paste" id="of-paste" hidden>Вставить</button>
+            </div>
+            <p class="url-note" id="url-note" role="status" hidden></p>
+            <p class="err" id="err-url" role="alert" hidden>Нужна ссылка на запись игры: VK Видео, YouTube или Rutube.</p>
+            <p class="of-hint">VK Видео, YouTube или Rutube. Нет ссылки под рукой? <button type="button" class="link" id="paste-demo">Заполнить примером</button></p>
+            <span class="of-lbl" id="lbl-scope">Что разобрать</span>
+            <div class="seg of-seg" id="scopes" role="group" aria-labelledby="lbl-scope">${scopes}</div>
+          </div>
+        </section>
+
+        <section class="of-step rise" style="--d:3" aria-labelledby="of-s2">
+          <span class="of-n" aria-hidden="true">2</span>
+          <div class="of-sb">
+            <h2 id="of-s2">За кем следить</h2>
+            <p class="of-sub">Номер на спине и цвет формы в этой игре. По ним ИИ находит игрока в каждой смене.</p>
+            <div class="of-roster" id="of-roster">${rosterHtml()}</div>
+          </div>
+        </section>
+
+        <section class="of-step" aria-labelledby="of-s3">
+          <span class="of-n" aria-hidden="true">3</span>
+          <div class="of-sb">
+            <h2 id="of-s3">Куда прислать</h2>
+            <div class="input-wrap at"><span class="at-sign" aria-hidden="true">@</span><input class="input" id="f-tg" name="tg" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send" maxlength="32" placeholder="ник в Telegram" value="${esc(o.tg)}" aria-label="Ник в Telegram" aria-describedby="err-tg tg-hint"></div>
+            <p class="err" id="err-tg" role="alert" hidden>Ник латиницей, 4–32 знака: буквы, цифры и «_». Или оставь поле пустым.</p>
+            <p class="of-hint" id="tg-hint">Можно оставить пустым: ответим на твоё сообщение в Telegram.</p>
+          </div>
+        </section>
+
+        <p class="cap order-privacy">${ICON.check}Видео видишь только ты, по личной ссылке. Ничего не публикуем, удалим по первой просьбе.</p>
+        <div class="order-bar of-bar"><div class="ob-price"><span class="num" id="ob-num">${pr.total}<small>₽</small></span><span id="ob-cap">${pr.total ? playersWord(n) : "бесплатно, без карты"}</span></div><button class="btn btn--accent" type="submit">Отправить заявку</button></div>
+        ${riskList("of-risk-m")}
+        <p class="cap order-legal">Отправляя заявку, соглашаешься с <a class="link" href="#/privacy">обработкой данных</a> и <a class="link" href="#/terms">условиями</a>.</p>
+      </form>
+
+      <aside class="of-aside" aria-label="Заявка">
+        <div class="of-ticket">
+          <div class="of-t-head"><b>Заявка</b><span id="t-svc">${svc || "игра не выбрана"}</span></div>
+          <ul class="of-t-list" id="t-list">${ticketList()}</ul>
+          <div class="of-t-row"><span>Разобрать</span><b id="t-scope">${SCOPES.find((s) => s[0] === o.scope)[1].toLowerCase()}</b></div>
+          <div class="of-t-row"><span>Результат</span><b>завтра в Telegram</b></div>
+          <div class="of-t-total"><span class="num" id="t-num">${pr.total}<small>₽</small></span><span id="t-cap"></span></div>
+          <button class="btn btn--accent of-t-go" type="submit" form="order-form">Отправить заявку</button>
+          ${riskList("of-risk")}
+        </div>
+        <div class="of-proof"><video src="${HERO.src}" poster="${HERO.poster}" autoplay muted loop playsinline preload="metadata" aria-label="Пример ролика без звука: игрок в зелёной обводке"></video>
+          <p><b>Так выглядит результат</b>Каждая смена отдельным видео, игрок в обводке. Плюс время на льду и голы при нём.</p></div>
+      </aside>
+    </div>`;
+  }
+
+  function orderMessage(o, ids) {
+    const sc = SCOPES.find((s) => s[0] === o.scope)[1].toLowerCase();
+    const ps = o.players;
+    const who = (p) => `№${p.number}, форма ${kitBy(p.kit).title.toLowerCase()}, ${p.team}${p.howto ? `. Приметы: ${p.howto}` : ""}`;
+    const lines = ps.length === 1
+      ? [`Привет! Хочу смены. Заказ №${ids[0]}`, `Игра: ${o.url}`, `Игрок: ${who(ps[0])}`]
+      : [`Привет! Хочу смены для ${ps.length} игроков. Заявка №${ids[0]}`, `Игра: ${o.url}`, ...ps.map((p, i) => `${i + 1}. ${who(p)} (заказ №${ids[i]})`)];
+    return [...lines, `Разобрать: ${sc}`, o.tg ? `Ответить: @${o.tg}` : ""].filter(Boolean).join("\n");
   }
 
   function bindOrder() {
-    const o = state.order, form = $("#order-form"), url = $("#f-url"), num = $("#f-num"), pv = $("#preview"), note = $("#url-note");
-    const paint = () => {
-      pv.style.setProperty("--mark", markerHex("neon")); pv.style.setProperty("--kit", kitBy(o.kit).hex);
-      $("#pv-num").textContent = o.number || "19";
-      $("#kit-name").textContent = `Форма: ${kitBy(o.kit).title.toLowerCase()}`;
-      const c = checkUrl(o.url);
-      $("#svc").innerHTML = c?.ok ? `<span class="tag">${c.svc}</span>` : "";
-      note.hidden = !c; if (c) { note.textContent = c.text; note.className = `url-note ${c.ok ? "ok" : "no"}`; }
+    const o = state.order, form = $("#order-form"), url = $("#f-url"), note = $("#url-note"), roster = $("#of-roster");
+    const setErr = (input, err, bad) => { if (!input) return; input.classList.toggle("bad", bad); input.setAttribute("aria-invalid", String(bad)); const e = $(err); if (e) e.hidden = !bad; };
+    const card = (i) => $(`.of-p[data-i="${i}"]`, roster);
+
+    const paintTicket = () => {
+      const n = o.players.length, pr = priceOf(n), svc = svcName(o.url);
+      $("#t-list").innerHTML = ticketList();
+      $("#t-svc").textContent = svc || "игра не выбрана";
+      $("#t-scope").textContent = SCOPES.find((s) => s[0] === o.scope)[1].toLowerCase();
+      const cap = pr.total ? (pr.free ? `${pr.free} ${plural(pr.free, "игрок", "игрока", "игроков")} бесплатно по пилоту` : `${playersWord(n)} × ${PRICES[0].price} ₽, оплата после результата`)
+        : `${n > 1 ? `${playersWord(n)}, ` : ""}бесплатно по пилоту, без карты`;
+      $("#t-num").innerHTML = `${pr.total}<small>₽</small>${pr.full !== pr.total ? `<s>${pr.full} ₽</s>` : ""}`;
+      $("#t-cap").textContent = cap;
+      $("#ob-num").innerHTML = `${pr.total}<small>₽</small>`;
+      $("#ob-cap").textContent = pr.total ? `${playersWord(n)}, после результата` : (n > 1 ? `${playersWord(n)}, бесплатно` : "бесплатно, без карты");
       saveDraft();
     };
-    const setErr = (input, err, bad) => { input.classList.toggle("bad", bad); input.setAttribute("aria-invalid", String(bad)); $(err).hidden = !bad; };
-    const numOk = () => /^\d{1,2}$/.test(o.number) && +o.number >= 1;
-    const RULES = [[url, "#err-url", () => !!checkUrl(o.url)?.ok], [num, "#err-num", numOk], [$("#f-team"), "#err-team", () => o.team.length > 1], [$("#f-tg"), "#err-tg", () => !o.tg || /^[a-zA-Z0-9_]{4,32}$/.test(o.tg)]];
-    const heal = (input) => { const r = RULES.find((x) => x[0] === input); if (r && input.classList.contains("bad") && r[2]()) setErr(input, r[1], false); };
-    url.addEventListener("input", () => { o.url = url.value.trim(); heal(url); paint(); if (!$("#err-url").hidden) note.hidden = true; });
-    num.addEventListener("input", () => { num.value = num.value.replace(/\D/g, "").slice(0, 3); o.number = num.value; if (num.value.length > 2) setErr(num, "#err-num", true); else heal(num); paint(); });
-    $("#f-team").addEventListener("input", (e) => { o.team = e.target.value.trim(); heal(e.target); saveDraft(); });
-    $("#f-howto").addEventListener("input", (e) => { o.howto = e.target.value.trim(); saveDraft(); });
-    $("#f-tg").addEventListener("input", (e) => { e.target.value = e.target.value.replace(/^.*t(elegram)?\.me\//i, "").replace(/^@+/, "").replace(/[\s/?#].*$/, ""); o.tg = e.target.value; heal(e.target); saveDraft(); });
-    RULES.forEach(([input, err, ok]) => input.addEventListener("blur", () => { if (input.value && !ok()) { setErr(input, err, true); if (input === url) note.hidden = true; } }));
-    /* Enter ведёт в следующее поле и отправляет только из последнего */
-    const chain = [url, num, $("#f-team"), $("#f-howto"), $("#f-tg")];
-    chain.forEach((input, i) => input.addEventListener("keydown", (e) => { if (e.key === "Enter" && i < chain.length - 1) { e.preventDefault(); chain[i + 1].focus(); } }));
-    $("#f-consent").addEventListener("change", (e) => { o.consent = e.target.checked; $("#err-consent").hidden = true; saveDraft(); });
-    const press = (box, attr, key) => $$("button", box).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset[attr] === key)));
+    const paintUrl = () => {
+      const c = checkUrl(o.url);
+      $("#of-link").classList.toggle("ok", !!c?.ok);
+      $("#svc").innerHTML = c?.ok ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>${c.svc}` : "";
+      note.hidden = !c || c.ok; if (c && !c.ok) { note.textContent = c.text; note.className = "url-note no"; }
+      $("#of-paste").hidden = !navigator.clipboard?.readText || !!o.url;
+      paintTicket();
+    };
+    const paintCard = (i) => {
+      const p = o.players[i], el = card(i); if (!el) return;
+      const k = kitBy(p.kit), sw = $(".of-sw", el);
+      sw.style.setProperty("--kit", k.hex); sw.style.setProperty("--on", onKit(k.key));
+      const plate = $(".of-plate", el); plate.textContent = p.team || "Команда"; plate.classList.toggle("empty", !p.team);
+      $$(".of-kit", el).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kit === p.kit)));
+      $(".of-kitname", el).textContent = `${k.title} форма`;
+    };
+    const redraw = (fresh = -1, focus) => {
+      roster.innerHTML = rosterHtml(fresh);
+      paintTicket();
+      if (focus) $(focus, roster)?.focus();
+    };
+
+    /* ссылка */
+    url.addEventListener("input", () => { o.url = url.value.trim(); if (url.classList.contains("bad") && checkUrl(o.url)?.ok) setErr(url, "#err-url", false); paintUrl(); });
+    url.addEventListener("blur", () => { if (o.url && !checkUrl(o.url)?.ok) setErr(url, "#err-url", false); });
+    url.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $(".of-num", roster)?.focus(); } });
+    $("#of-paste").addEventListener("click", async () => {
+      try { const t = (await navigator.clipboard.readText()).trim(); if (t) { url.value = t; o.url = t; paintUrl(); if (checkUrl(t)?.ok) $(".of-num", roster)?.focus(); else url.focus(); } }
+      catch { url.focus(); toast("Вставь ссылку вручную: долгое нажатие в поле"); }
+    });
+    $("#scopes").addEventListener("click", (e) => { const b = e.target.closest("[data-scope]"); if (!b) return; o.scope = b.dataset.scope; $$("button", $("#scopes")).forEach((x) => x.setAttribute("aria-pressed", String(x === b))); paintTicket(); });
+
+    /* игроки: одно место для всех карточек, карточки перерисовываются при добавлении и удалении */
+    roster.addEventListener("input", (e) => {
+      const el = e.target.closest(".of-p"), f = e.target.dataset.f; if (!el || !f) return;
+      const i = +el.dataset.i, p = o.players[i];
+      if (f === "number") { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 2); p.number = e.target.value; if (numOk(p.number)) setErr(e.target, `#of-err-num-${i}`, false); }
+      else { p[f] = e.target.value.trim(); if (f === "team" && p.team.length > 1) setErr(e.target, `#of-err-team-${i}`, false); }
+      paintCard(i); paintTicket();
+    });
+    roster.addEventListener("click", (e) => {
+      const el = e.target.closest(".of-p"), kb = e.target.closest("[data-kit]"), act = e.target.closest("[data-act]");
+      if (kb && el) { const i = +el.dataset.i; o.players[i].kit = kb.dataset.kit; paintCard(i); paintTicket(); return; }
+      if (!act) return;
+      if (act.dataset.act === "add" && o.players.length < MAXP) {
+        const last = o.players[o.players.length - 1];
+        o.players.push({ number: "", kit: last?.kit || "blue", team: last?.team || "", howto: "" });
+        const i = o.players.length - 1; redraw(i);
+        const num = $(`.of-p[data-i="${i}"] .of-num`, roster); num?.focus({ preventScroll: true });
+        card(i)?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+      } else if (act.dataset.act === "del" && el) {
+        o.players.splice(+el.dataset.i, 1); redraw(-1, ".of-add");
+      } else if (act.dataset.act === "how" && el) {
+        const i = +el.dataset.i; o.players[i].showHow = true; redraw(-1, `.of-p[data-i="${i}"] .of-how`);
+      }
+    });
+    roster.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" || !e.target.matches("input")) return;
+      e.preventDefault();
+      const inputs = [...$$("input", roster), $("#f-tg")]; const j = inputs.indexOf(e.target);
+      inputs[j + 1]?.focus();
+    });
+    roster.addEventListener("focusout", (e) => {
+      const el = e.target.closest(".of-p"); if (!el || !e.target.value) return; const i = +el.dataset.i, p = o.players[i];
+      if (e.target.dataset.f === "number" && !numOk(p.number)) setErr(e.target, `#of-err-num-${i}`, true);
+    });
+
+    /* ник */
+    const tg = $("#f-tg"), tgOk = () => !o.tg || /^[a-zA-Z0-9_]{4,32}$/.test(o.tg);
+    tg.addEventListener("input", () => { tg.value = tg.value.replace(/^.*t(elegram)?\.me\//i, "").replace(/^@+/, "").replace(/[\s/?#].*$/, ""); o.tg = tg.value; if (tgOk()) setErr(tg, "#err-tg", false); saveDraft(); });
+    tg.addEventListener("blur", () => { if (!tgOk()) setErr(tg, "#err-tg", true); });
+
     $("#paste-demo").addEventListener("click", () => {
-      Object.assign(o, { url: `https://www.youtube.com/watch?v=${O.youtube}`, number: "19", kit: "blue", team: O.team, scope: "p2", tg: "demo_player", who: "me", consent: false });
-      url.value = o.url; num.value = o.number; $("#f-team").value = o.team; $("#f-tg").value = o.tg; $("#consent-box").hidden = true;
-      $$("input", form).forEach((i) => { i.classList.remove("bad"); i.removeAttribute("aria-invalid"); }); $$(".err", form).forEach((e) => { e.hidden = true; });
-      press($("#kits"), "kit", o.kit); press($("#scopes"), "scope", o.scope); press($("#who"), "who", o.who); paint();
+      Object.assign(o, { url: `https://www.youtube.com/watch?v=${O.youtube}`, scope: "p2", tg: "demo_player", players: [{ number: "19", kit: "blue", team: O.team, howto: "" }] });
+      url.value = o.url; tg.value = o.tg;
+      $$("input", form).forEach((i) => { i.classList.remove("bad"); i.removeAttribute("aria-invalid"); }); $$(".err", form).forEach((x) => { x.hidden = true; });
+      $$("button", $("#scopes")).forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.scope === o.scope)));
+      redraw(); paintUrl();
     });
-    $("#kits").addEventListener("click", (e) => { const b = e.target.closest("[data-kit]"); if (b) { o.kit = b.dataset.kit; press($("#kits"), "kit", o.kit); paint(); } });
-    $("#scopes").addEventListener("click", (e) => { const b = e.target.closest("[data-scope]"); if (b) { o.scope = b.dataset.scope; press($("#scopes"), "scope", o.scope); saveDraft(); } });
-    $("#who").addEventListener("click", (e) => { const b = e.target.closest("[data-who]"); if (!b) return; o.who = b.dataset.who; press($("#who"), "who", o.who); $("#consent-box").hidden = o.who !== "kid"; if (o.who !== "kid") $("#err-consent").hidden = true; saveDraft(); });
-    /* липкая панель не должна закрывать поле, в которое человек пишет */
+
+    /* липкая панель на телефоне не должна закрывать поле, в которое человек пишет */
     form.addEventListener("focusin", (e) => {
-      const bar = $(".order-bar"); if (!bar || getComputedStyle(bar).position !== "sticky" || e.target.closest(".order-bar")) return;
-      requestAnimationFrame(() => { const r = (e.target.closest(".field") || e.target).getBoundingClientRect(), b = bar.getBoundingClientRect(); if (r.bottom > b.top - 12) window.scrollBy({ top: r.bottom - b.top + 28 }); });
+      const bar = $(".of-bar"); if (!bar || getComputedStyle(bar).position !== "sticky" || e.target.closest(".of-bar")) return;
+      requestAnimationFrame(() => { const r = (e.target.closest(".of-p, .of-sb") || e.target).getBoundingClientRect(), b = bar.getBoundingClientRect(); if (e.target.getBoundingClientRect().bottom > b.top - 12) window.scrollBy({ top: Math.min(r.bottom, e.target.getBoundingClientRect().bottom + 60) - b.top + 28 }); });
     });
+
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       let first = null;
-      for (const [input, err, ok] of RULES) { const good = ok(); setErr(input, err, !good); if (!good && !first) first = input; }
-      const needConsent = o.who === "kid" && !o.consent; $("#err-consent").hidden = !needConsent;
-      if (needConsent && !first) first = $("#f-consent");
-      if ($("#err-url").hidden === false) note.hidden = true;   // одна подсказка у поля, не две
-      if (first) { first.focus(); first.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); return; }
+      const mark = (input, err, good) => { setErr(input, err, !good); if (!good && !first) first = input; };
+      mark(url, "#err-url", !!checkUrl(o.url)?.ok);
+      if (!$("#err-url").hidden) note.hidden = true;     // одна подсказка у поля, не две
+      o.players.forEach((p, i) => { const el = card(i); mark($(".of-num", el), `#of-err-num-${i}`, numOk(p.number)); mark($(".of-team", el), `#of-err-team-${i}`, p.team.length > 1); });
+      mark(tg, "#err-tg", tgOk());
+      if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); return; }
       openConfirm();
     });
-    paint();
+    paintUrl();
   }
 
-  /* перед отправкой: готовое сообщение, которое уйдёт автору. Отправляет его сам человек */
+  /* перед отправкой: готовое сообщение, которое уйдёт автору. Отправляет его сам человек.
+     Каждый игрок — свой заказ (свой номер, свой расчёт и своя страница результата), group — номер первого. */
   function openConfirm() {
-    const o = { ...state.order, id: S.nextId() };
-    const msg = orderMessage(o);
+    const o = state.order, n = o.players.length, ids = [];
+    for (let i = 0; i < n; i++) {
+      let id = S.nextId();
+      if (!S.cloud) id = (ids[0] ?? id) + i;
+      else while (ids.includes(id)) id = S.nextId();
+      ids.push(id);
+    }
+    const msg = orderMessage(o, ids), pr = priceOf(n);
     openModal(`<div class="confirm">
-      <div class="confirm-head"><h2 id="confirm-title">Проверь сообщение</h2><button class="icon-btn" type="button" data-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <p class="cap">Нажми кнопку: откроется Telegram с этим текстом. Там нажми «Отправить». Больше ничего делать не нужно.</p>
+      <div class="confirm-head"><h2 id="confirm-title">Проверь заявку</h2><button class="icon-btn" type="button" data-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <p class="cap">Нажми кнопку: откроется Telegram с этим текстом. Там нажми «Отправить». ${pr.total ? `К оплате после результата: ${pr.total} ₽.` : "Платить ничего не нужно."}</p>
       <pre class="msg">${esc(msg)}</pre>
       <div class="confirm-actions"><a class="btn btn--accent" id="send-order" href="${tgLink(msg)}" target="_blank" rel="noopener">${ICON.tg}Отправить в Telegram</a><button class="btn btn--ghost" data-close>Исправить</button></div>
       <p class="cap">Заявку получит Сергей, автор сервиса (@${esc(B.telegram)}). Видео нигде не публикуется.</p></div>`);
     $("#send-order").addEventListener("click", () => {
-      S.add({ id: o.id, created: Date.now(), url: o.url, number: +o.number, kit: o.kit, team: o.team, howto: o.howto, scope: o.scope, tg: o.tg, who: o.who, msg,
-        period: SCOPES.find((s) => s[0] === o.scope)[1], real: o.url.includes(O.youtube) ? "game" : "" });
-      // расчёт на видеокарте заявка не запускает: её запускает владелец кнопкой в админке (assets/gpu.js)
-      state.order = { ...blank }; saveDraft();
+      const sc = SCOPES.find((s) => s[0] === o.scope);
+      o.players.forEach((p, i) => {
+        S.add({ id: ids[i], created: Date.now(), url: o.url, number: +p.number, kit: p.kit, team: p.team, howto: p.howto, scope: o.scope, tg: o.tg, msg,
+          period: sc[1], real: o.url.includes(O.youtube) ? "game" : "", ...(n > 1 ? { group: ids[0], groupIds: ids } : {}) });
+      });
+      // расчёт на видеокарте заявка не запускает: его запускает владелец кнопкой в админке (assets/gpu.js)
+      state.order = blankOrder(); saveDraft();
       closeSheet(true);
-      setTimeout(() => { location.hash = `#/status/${o.id}`; }, 60);
+      setTimeout(() => { location.hash = `#/status/${ids[0]}`; }, 60);
     });
   }
 
@@ -487,7 +662,7 @@
     return `<div class="wrap st">
       <div class="st-head rise">
         <p class="cap">Заказ №${esc(o.id)}</p>
-        <h1 class="d2">${isDone ? "Твои смены готовы" : "Смены уже ищем"}</h1>
+        <h1 class="d2">${isDone ? "Смены готовы" : "Смены уже ищем"}</h1>
         <p class="lead">${isDone ? (R ? `Смены №${esc(o.number)} найдены по номеру и цвету формы: ${R.periods.length} ${plural(R.periods.length, "период", "периода", "периодов")}.` : `Мы нашли все смены №${esc(o.number)} и проверили каждую.`) : `Результат до завтра, 20:00. Пришлём в Telegram${tg ? ` @${esc(tg)}` : " ответом на твоё сообщение"}, страницу можно закрыть.`}</p>
         ${!isDone && o.msg && cur > 0 ? `<p class="cap st-resend">Сообщение в Telegram не отправилось? <a class="link" href="${tgLink(o.msg)}" target="_blank" rel="noopener">Открыть Telegram ещё раз</a></p>` : ""}
       </div>
@@ -497,13 +672,14 @@
           ${isDone ? (R ? `<a class="st-result" href="${esc(R.url)}" target="_blank" rel="noopener"><span class="num">${mmss(R.toi)}</span><span>на льду, ${R.shifts} ${plural(R.shifts, "смена", "смены", "смен")}</span><span class="btn btn--accent">Открыть результат</span></a>${R.until ? `<p class="st-keep">Видео хранится до <b>${new Date(R.until * 1000 - 86400000).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</b>. Скачайте его на странице результата, чтобы оно осталось у вас.</p>` : ""}` : `<a class="st-result" href="#/result?own"><span class="num">${T.toi}</span><span>на льду, ${T.shifts} смен</span><span class="btn btn--accent">Открыть результат</span></a>`) : `
           <div class="st-soon" aria-label="Пример того, что придёт">
             <div class="st-soon-reel"><img src="${HERO.poster}" alt="" loading="lazy"><svg viewBox="0 0 90 160" aria-hidden="true"><ellipse cx="45" cy="112" rx="24" ry="7"/></svg><b>№${esc(o.number)}</b></div>
-            <div class="st-soon-txt"><b>Твой ролик появится здесь</b><span>И цифры игры: время на льду, смены, голы при тебе.</span>
+            <div class="st-soon-txt"><b>Ролик появится здесь</b><span>И цифры игры: время на льду, смены, голы при игроке.</span>
               <div class="st-soon-nums" aria-hidden="true"><span><i data-v="0:00"></i>на льду</span><span><i data-v="00"></i>смен</span><span><i data-v="00 с"></i>средняя</span></div></div>
           </div>
           <div class="st-wait"><span class="st-tg" aria-hidden="true">${ICON.tg}</span><span>Ничего делать не нужно. Мы напишем, как только всё будет готово.</span></div>`}
           <div class="sum">
             <div><span>Игра</span><b>${esc(String(o.url).replace(/^https?:\/\/(www\.)?/, ""))}</b></div>
             <div><span>Игрок</span><b><i class="kit-dot" style="--c:${kit.hex}"></i>№${esc(o.number)}, ${esc(o.team)}</b></div>
+            ${Array.isArray(o.groupIds) && o.groupIds.length > 1 ? `<div><span>В заявке</span><b>${o.groupIds.map((gid) => { const g = S.get(gid); const t = g ? `№${esc(g.number)}` : `заказ ${esc(gid)}`; return String(gid) === String(o.id) ? t : `<a class="link" href="#/status/${esc(gid)}">${t}</a>`; }).join(", ")}</b></div>` : ""}
             <div><span>Разобрать</span><b>${esc(String(o.period).toLowerCase())}</b></div>
           </div>
           ${isDone ? "" : `<button class="st-demo" id="st-demo" type="button">Демо: показать следующий шаг</button>`}
@@ -535,7 +711,7 @@
       <p class="cap">Вопросы: <a class="link" href="https://t.me/${B.telegram}" target="_blank" rel="noopener">@${esc(B.telegram)}</a> в Telegram. <a class="link" href="#/">На главную</a></p></div>`;
   function privacy() {
     return doc("Что мы храним и зачем", "Коротко и без мелкого шрифта.", [
-      ["Что собираем", ["Ник в Telegram, чтобы прислать результат.", "Ссылку на запись игры, номер, цвет формы и название команды, чтобы найти игрока.", "Для детской игры отметку, что согласие родителей есть.", "Лица не распознаём. Игрока ищем по номеру на спине и цвету формы."]],
+      ["Что собираем", ["Ник в Telegram, чтобы прислать результат.", "Ссылку на запись игры, номер, цвет формы и название команды, чтобы найти игрока.", "Лица не распознаём. Игрока ищем по номеру на спине и цвету формы."]],
       ["Зачем", ["Найти смены в записи, собрать видео и ролик, прислать ссылку.", "Рекламу по этим данным не показываем и никому их не передаём."]],
       ["Кто видит видео", ["Ты, по личной ссылке. Ссылку можно переслать, тогда её увидит тот, кому ты её дал.", "Автор сервиса, когда проверяет смены перед отправкой.", "В соцсети и рилсы твоё видео не попадает без отдельного согласия."]],
       ["Сколько храним", [`Видео смен и ролик: ${OFFER.packMonths} месяцев. <i>Срок уточнить у юриста.</i>`, "Запись игры целиком удаляем после обработки.", "Заявку и ник: пока действует пакет или пока не попросишь удалить. <i>Уточнить у юриста.</i>"]],
@@ -606,7 +782,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261118b";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261120b";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
