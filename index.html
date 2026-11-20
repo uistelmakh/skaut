@@ -31,7 +31,7 @@
 <link rel="preload" href="assets/fonts/onest-normal-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="media/frames/reel_hero.jpg" as="image" fetchpriority="high">
 <link rel="stylesheet" href="assets/fonts/fonts.css">
-<link rel="stylesheet" href="assets/app.css?v=20261120d">
+<link rel="stylesheet" href="assets/app.css?v=20261120e">
 </head>
 <body>
 <a class="skip" href="#view">К содержимому</a>
@@ -46,7 +46,6 @@
     <a href="#/" data-jump="how">Как это работает</a>
     <a href="#/" data-jump="prices">Цены</a>
     <a href="#/" data-jump="team">Командам</a>
-    <a href="#/cabinet" data-nav="cabinet">Кабинет</a>
   </nav>
   <a class="btn btn--small btn--accent top-cta" href="#/order"><span>Получить смены<span class="cta-tail"> бесплатно</span></span></a>
 </header>
@@ -63,7 +62,6 @@
 <nav class="dock" aria-label="Быстрая навигация">
   <a href="#/" data-nav="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20h-5.5v-5h-5v5H4z"/></svg><span>Главная</span></a>
   <a href="#/result" data-nav="result"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.2"/><ellipse cx="12" cy="17" rx="8" ry="3.4"/></svg><span>Пример</span></a>
-  <a href="#/cabinet" data-nav="cabinet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg><span>Кабинет</span></a>
   <a href="#/order" data-nav="order"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Получить</span></a>
 </nav>
 
@@ -89,12 +87,11 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- ?v=… — версия файлов: браузер не берёт старые из кэша. Менять при каждой выкладке (и ASSET_V в app.js) -->
-<script src="assets/config.js?v=20261120d"></script>
-<script src="data/order.js?v=20261120d"></script>
-<script src="data/demo.js?v=20261120d"></script>
-<script src="assets/store.js?v=20261120d"></script>
-<script src="assets/gpu.js?v=20261120d"></script>
+<script src="assets/config.js?v=20261120e"></script>
+<script src="data/order.js?v=20261120e"></script>
+<script src="assets/store.js?v=20261120e"></script>
+<script src="assets/gpu.js?v=20261120e"></script>
 <!-- Админка (assets/admin.js, admin.css, data/admin_demo.js) грузится только по адресу админки: клиенту она не нужна -->
-<script src="assets/app.js?v=20261120d"></script>
+<script src="assets/app.js?v=20261120e"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
 /* Клиентская часть прототипа. Без сборки и без сервера приложений.
-   Название — window.BRAND (assets/config.js), настоящий заказ — window.ORDER, демо кабинета — window.DEMO,
+   Название — window.BRAND (assets/config.js), настоящий заказ — window.ORDER,
    общее состояние с админкой — window.STORE (assets/store.js). Админка живёт в assets/admin.js. */
 (() => {
-  const B = window.BRAND, O = window.ORDER, D = window.DEMO, PRICES = window.PRICES, OFFER = window.OFFER, VALUE = window.VALUE, ICE = window.ICE;
+  const B = window.BRAND, O = window.ORDER, PRICES = window.PRICES, OFFER = window.OFFER, VALUE = window.VALUE, ICE = window.ICE;
   const HERO = { src: "media/reel_hero.mp4", poster: "media/frames/reel_hero.jpg" };   // ролик без размытой заставки, лёгкий
   const MARKERS = window.MARKERS, KITS = window.KITS, S = window.STORE;
   const $ = (s, r = document) => r.querySelector(s);
@@ -271,43 +271,6 @@
         <div class="hero-cta"><a class="btn btn--accent btn--big" id="want-go" href="#/order">${ctaText()}</a><a class="link" href="#/">Как это работает</a></div>
         <p class="trust">${esc(trustLine())}</p>
       </section>`}
-    </div>`;
-  }
-
-  /* ================= КАБИНЕТ ================= */
-  function cabinet(arg) {
-    if (arg === "empty") return `<div class="wrap cab"><div class="empty"><svg viewBox="0 0 150 60" aria-hidden="true"><ellipse cx="75" cy="30" rx="68" ry="22"/></svg><h1 class="d2">Здесь появятся твои игры</h1><p class="lead">Пришли первую игру. Завтра тут будут смены, время на льду и ролик.</p><a class="btn btn--accent btn--big" href="#/order">${ctaText()}</a></div></div>`;
-    const games = D.games.map((g) => g.real ? { ...g, opp: O.opp, toiSec: T.toiSec, shifts: T.shifts, perToi: T.toiSec, perShifts: T.shifts, periods: 1 } : g);
-    const last = games[games.length - 1], prev = games[games.length - 2];
-    const dToi = last.perToi - prev.perToi, dSh = +(last.perShifts - prev.perShifts).toFixed(1);
-    const bars = (key, fmt) => { const max = Math.max(...games.map((g) => g[key])); const min = Math.min(...games.map((g) => g[key])) * 0.82;
-      return `<div class="bars">${games.map((g, i) => `<div class="${g.real ? "real" : ""}"><span>${fmt(g[key])}</span><i style="--h:${((g[key] - min) / (max - min)).toFixed(3)};--i:${i}"></i></div>`).join("")}</div><div class="bars-x">${games.map((g) => `<span>${g.date.replace(" января", " янв")}</span>`).join("")}</div>`; };
-    const rows = [...games].reverse().map((g) => g.real
-      ? `<a class="game" href="#/result"><h3>${esc(O.team)} – ${esc(g.opp)} <span class="tag tag--plus">настоящий заказ</span></h3><p>${g.date}, ${O.period}-й период</p><span class="num col2">${mmss(g.toiSec)}<small>на льду</small></span><span class="num col3">${g.shifts}<small>${plural(g.shifts, "смена", "смены", "смен")}</small></span></a>`
-      : `<div class="game"><h3>${esc(O.team)} – ${esc(g.opp)}, ${g.score}</h3><p>${g.date}, вся игра</p><span class="num col2">${mmss(g.toiSec)}<small>на льду</small></span><span class="num col3">${g.shifts}<small>${plural(g.shifts, "смена", "смены", "смен")}</small></span></div>`).join("");
-    const moments = [[2, "Гол 2:1, ты на льду"], [7, "Самая длинная смена"], [1, "Первая смена периода"], [11, "Концовка до сирены"]].map(([n, title]) => { const s = shiftBy(n);
-      return `<button class="moment" data-play="${n}"><span class="thumb"><img loading="lazy" src="${O.media.frame(n)}" alt=""><span class="play">${ICON.play}Смотреть</span><span class="len">${mmss(s.len)}</span></span><h3>${title}</h3><p>Смена ${n}, ${s.sec} с, ${s.c0} по табло</p></button>`; }).join("");
-    const delta = (v, f) => `<span class="delta">${v >= 0 ? "▲" : "▼"} ${f(Math.abs(v))}<i>к прошлой игре</i></span>`;
-    const P = D.pack, left = P.size - P.used;
-    const pucks = Array.from({ length: P.size }, (_, i) => `<i class="${i < P.used ? "used" : ""}" style="--i:${i}"></i>`).join("");
-    // настоящие результаты заказов этого браузера (tools/gpu.py publish → over[id].result)
-    const mine = S.all().map((o) => ({ o, r: S.over(o.id).result })).filter((x) => x.r);
-    const real = mine.length ? `<div class="games rise" style="margin:0 0 28px"><h2 class="d3" style="margin:0 0 12px">Готовые игры</h2>${mine.map(({ o, r }) =>
-      `<a class="game" href="${esc(r.url)}" target="_blank" rel="noopener"><h3>№${esc(o.number)} ${esc(o.team)} <span class="tag tag--plus">заказ №${esc(o.id)}</span></h3><p>${r.periods.length === 1 ? "период" : "периоды"} ${r.periods.map((k) => k === 4 ? "ОТ" : k).join(", ")}</p><span class="num col2">${mmss(r.toi)}<small>на льду</small></span><span class="num col3">${r.shifts}<small>${plural(r.shifts, "смена", "смены", "смен")}</small></span></a>`).join("")}</div>` : "";
-    return `<div class="wrap cab">
-      ${real}
-      <div class="cab-head rise"><div><h1>Мои игры</h1><p class="cap" style="margin-top:8px">№${O.number} ${esc(O.team)}, ${esc(D.month.toLowerCase())}</p><span class="demo-note"><i></i>${esc(D.note)}</span></div>${jersey(O.number, true)}</div>
-      <div class="pack rise" style="--d:1">
-        <div class="pack-l"><span class="num">${left}</span><div><b>${plural(left, "игра осталась", "игры осталось", "игр осталось")} из ${P.size}</b><span>Пакет действует до ${esc(P.until)}</span></div></div>
-        <div class="pack-pucks" aria-hidden="true">${pucks}</div>
-        <a class="btn btn--accent" href="#/order">${ICON.plus}Прислать игру</a>
-      </div>
-      <div class="charts">
-        <div class="chart rise" style="--d:2"><h3>На льду за период, в среднем</h3><div class="kpi"><span class="num">${mmss(last.perToi)}</span>${delta(dToi, mmss)}</div>${bars("perToi", mmss)}</div>
-        <div class="chart rise" style="--d:3"><h3>Смен за период, в среднем</h3><div class="kpi"><span class="num">${last.perShifts}</span>${delta(dSh, (v) => String(v).replace(".", ","))}</div>${bars("perShifts", (v) => String(v).replace(".", ","))}</div>
-      </div>
-      <section class="sec" style="padding-top:44px"><h2 class="d3" style="margin-bottom:16px">Лучшие моменты</h2><div class="moments">${moments}</div><p class="cap" style="margin-top:12px">Из игры 27 января, настоящие смены.</p></section>
-      <section class="sec" style="padding-top:44px"><h2 class="d3" style="margin-bottom:16px">Игры</h2><div class="games">${rows}</div></section>
     </div>`;
   }
 
@@ -725,9 +688,9 @@
   }
 
   /* ================= МАРШРУТЫ ================= */
-  const ROUTES = { "": home, home, result, cabinet, order, status, privacy, terms };
-  const NAV = { "": "home", home: "home", result: "result", cabinet: "cabinet", order: "order", status: "order" };
-  const TITLES = { home: "все смены из трансляции", result: `№${O.number} ${O.team}, ${T.toi} на льду`, cabinet: "мои игры", order: "получить смены", status: "статус заказа", privacy: "данные", terms: "условия", none: "страницы нет" };
+  const ROUTES = { "": home, home, result, order, status, privacy, terms };
+  const NAV = { "": "home", home: "home", result: "result", order: "order", status: "order" };
+  const TITLES = { home: "все смены из трансляции", result: `№${O.number} ${O.team}, ${T.toi} на льду`, order: "получить смены", status: "статус заказа", privacy: "данные", terms: "условия", none: "страницы нет" };
   let jump = null;
 
   /* ---------- вход в админку по коду ----------
@@ -771,7 +734,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261120d";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261120e";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
@@ -783,6 +746,7 @@
     stopStatus?.(); stopStatus = null; cancelAnimationFrame(tryRaf);
     const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
     const [route, ...rest] = path.replace(/\/$/, "").split("/");
+    if (route === "cabinet") { location.replace("#/"); return; }   // кабинет убран 20.11, старые ссылки ведут на главную
     if (route === "admin" && !adminOk()) { window.ADMIN?.unmount?.(); delete document.body.dataset.app; gate(); return; }
     if ((route === "admin" && !window.ADMIN) || (route === "status" && !window.ADMIN_DEMO)) {
       need("data/admin_demo.js").then(() => route === "admin" ? Promise.all([need("assets/admin.css"), need("assets/admin.js")]) : null).then(mount);
