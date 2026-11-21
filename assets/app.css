@@ -102,16 +102,6 @@ main { display: block; min-height: 80vh; outline: none; padding-bottom: var(--do
 .opt { font-weight: 400; font-size: 13px; margin-left: 6px; }
 
 /* ---------- строка счёта сверху, как на сайтах лиг ---------- */
-.ticker { background: #fff; color: var(--ink); border-bottom: 1px solid #DDE3EE; font-size: 12px; }
-.tk-in { display: flex; align-items: stretch; height: 44px; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
-.tk-in::-webkit-scrollbar { display: none; }
-.tk-cell { flex: none; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-right: 1px solid #DDE3EE; }
-.tk-cell:first-child { padding-left: 0; }
-.tk-n { font-size: 24px; line-height: 1; }
-.tk-mute, .tk-opp, .tk-k, .tk-real { color: #5A6478; }
-.tk-dash { color: #8A94A8; }
-.tk-when, .tk-more, .tk-gap, .tk-real { display: none; }
-.tk-me { border-right: 0; }
 
 /* ---------- шапка и нижнее меню ---------- */
 .top { position: sticky; top: 0; z-index: 30; background: rgba(8, 16, 31, .94); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line-2); }
@@ -596,12 +586,6 @@ body[data-route="order"] .dock { display: none; }
 
 /* ================= Планшет ================= */
 @media (min-width: 600px) {
-  .ticker { font-size: 13px; }
-  .tk-when, .tk-more { display: flex; }
-  .tk-more { display: inline; }
-  .tk-when { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
-  .tk-k { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-  .tk-me { border-right: 1px solid #DDE3EE; }
   .hero-text .btn--big { width: auto; }
   .prices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .price-p { font-size: clamp(48px, 6.6vw, 96px); }
@@ -621,11 +605,6 @@ body[data-route="order"] .dock { display: none; }
   .dock { display: none; }
   .toast { bottom: 32px; }
 
-  .tk-in { height: 52px; }
-  .tk-cell { padding: 0 22px; }
-  .tk-n { font-size: 30px; }
-  .tk-gap { display: block; flex: 1; }
-  .tk-real { display: flex; border-right: 0; padding-right: 0; }
 
   .top-in { height: 76px; gap: 40px; }
   .logo { font-size: 28px; gap: 10px; }

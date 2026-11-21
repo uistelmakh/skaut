@@ -38,18 +38,6 @@
   const goalTag = (g) => g ? `<span class="tag ${g.mine ? "tag--plus" : "tag--minus"}">${g.mine ? "гол" : "пропустили"} ${esc(g.score)}</span>` : "";
   const goalOfShift = (n) => O.goals.find((g) => g.shift === n);
   const PERIOD_GEN = { 1: "первого", 2: "второго", 3: "третьего" };
-  const [scoreUs, scoreThem] = O.scoreEnd.split(":");
-
-  /* ---------- строка счёта сверху, как на сайтах лиг (главная и результат) ---------- */
-  function ticker() {
-    return `<div class="wrap tk-in">
-      <div class="tk-cell tk-when"><span class="tk-k">${O.period}-й период</span><span>${esc(O.date)}</span></div>
-      <div class="tk-cell tk-score"><b>${esc(O.team)}</b><span class="d tk-n">${esc(scoreUs)}</span><span class="tk-dash" aria-label="счёт">—</span><span class="d tk-n tk-mute">${esc(scoreThem)}</span><b class="tk-opp">${esc(O.opp)}</b></div>
-      <div class="tk-cell tk-me"><span class="d tk-n">№${O.number}</span><span>${T.toi} на льду<span class="tk-more">, ${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}, +${T.plus} −${T.minus}</span></span></div>
-      <span class="tk-gap" aria-hidden="true"></span>
-      <div class="tk-cell tk-real">Настоящий заказ, не постановка</div>
-    </div>`;
-  }
 
   /* ---------- цифры периода: крупные цифры через тонкие линии, как графика трансляции ---------- */
   function statsRow(who) {
@@ -782,7 +770,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261120f";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261121a";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
@@ -792,7 +780,6 @@
   }
   function mount() {
     stopStatus?.(); stopStatus = null;
-    const tk = $("#ticker"); if (tk) tk.hidden = true;   // строка счёта — только на главной и результате
     const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
     const [route, ...rest] = path.replace(/\/$/, "").split("/");
     if (route === "cabinet") { location.replace("#/"); return; }   // кабинет убран 20.11, старые ссылки ведут на главную
@@ -816,7 +803,6 @@
     view.className = "";
     view.innerHTML = html;
     document.body.dataset.route = nav;
-    if (tk && (nav === "home" || nav === "result")) { tk.innerHTML ||= ticker(); tk.hidden = false; }
     document.documentElement.style.setProperty("--mark", markerHex(O.marker));
     $$("[data-nav]").forEach((a) => a.classList.toggle("on", a.dataset.nav === nav));
     document.title = `${B.name} ${B.product}: ${TITLES[route] || TITLES[nav] || TITLES.none}`;
