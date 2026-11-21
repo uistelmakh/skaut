@@ -106,13 +106,13 @@
   const SCOPES = [["p1", "1-й период", "1-й"], ["p2", "2-й период", "2-й"], ["p3", "3-й период", "3-й"], ["game", "Вся игра", "Вся игра"]];
   const DRAFT = "scout.order.draft";
   /* черновик формы: ссылка, период, ник и список игроков (до V9 был один игрок полями number/kit/team) */
-  const blankOrder = () => ({ url: "", scope: "game", tg: "", marker: "none", players: [{ number: "", kit: "blue", team: "", howto: "" }] });
+  const blankOrder = () => ({ url: "", scope: "game", tg: "", players: [{ number: "", kit: "blue", team: "", howto: "", marker: "none" }] });
   const loadDraft = () => {
     try {
       const d = JSON.parse(sessionStorage.getItem(DRAFT) || "{}"), b = blankOrder();
       const players = Array.isArray(d.players) && d.players.length ? d.players.slice(0, 5)
         : [{ number: d.number || "", kit: d.kit || "blue", team: d.team || "", howto: d.howto || "" }];
-      return { url: d.url || b.url, scope: d.scope || b.scope, tg: d.tg || b.tg, marker: d.marker || b.marker, players: players.map((p) => ({ ...b.players[0], ...p })) };
+      return { url: d.url || b.url, scope: d.scope || b.scope, tg: d.tg || b.tg, players: players.map((p) => ({ ...b.players[0], ...(d.marker ? { marker: d.marker } : {}), ...p })) };
     } catch { return blankOrder(); }
   };
   const saveDraft = () => { try { sessionStorage.setItem(DRAFT, JSON.stringify(state.order)); } catch { /* без хранилища черновик живёт до перезагрузки */ } };
@@ -189,6 +189,19 @@
           <li><span class="d step-n" aria-hidden="true">2</span><h3>Находим игрока во всей записи</h3><p>ИИ ищет номер и цвет формы в каждом кадре, потом человек пересматривает каждую найденную смену.</p></li>
           <li class="last"><span class="d step-n" aria-hidden="true">3</span><h3>Готово — пришлём в Telegram</h3><p>Как только всё проверим: смены отдельными видео, время на льду, голы при игроке и ролик 9:16 для сторис.</p></li>
         </ol>
+      </div>
+    </section>
+
+    <section class="band band--2" id="season" aria-labelledby="season-t">
+      <div class="wrap">
+        <div class="sec-head"><h2 class="d sec-title" id="season-t">Своя статистика<br> за сезон</h2><p>Каждая присланная игра добавляется в твою историю. Видно, сколько ты на самом деле играешь и как это меняется от игры к игре.</p></div>
+        <ul class="season">
+          <li><h3 class="d">Смены</h3><p>Сколько раз выходил на лёд: за период, за игру, за сезон.</p></li>
+          <li><h3 class="d">Минуты на льду</h3><p>Точное время и средняя смена. Видно, больше тебе дают играть или меньше.</p></li>
+          <li><h3 class="d">Игры</h3><p>Все сыгранные матчи в одном списке, у каждой смены своё видео.</p></li>
+          <li><h3 class="d">Голы при тебе</h3><p>Плюс и минус: сколько забили и пропустили, пока ты был на льду.</p></li>
+        </ul>
+        <p class="note">Одна игра из примера: ${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}, ${T.toi} на льду, +${T.plus} −${T.minus}. С каждой новой игрой цифры складываются в сезон.</p>
       </div>
     </section>
 
@@ -344,9 +357,17 @@
   const HL = [{ key: "none", title: "Без обводки", hex: "" }, ...(window.MARKERS || [])];
   const hlBy = (k) => HL.find((m) => m.key === k) || HL[0];
   const hlName = (k) => k === "none" ? "без обводки" : `${hlBy(k).title.toLowerCase()} эллипс`;
-  const hlHtml = () => HL.map((m) => m.key === "none"
-    ? `<button type="button" class="o2-hlb o2-hl-none" data-hl="none" aria-pressed="${state.order.marker === "none"}">Без обводки</button>`
-    : `<button type="button" class="o2-hlb o2-hl-c" data-hl="${m.key}" aria-pressed="${state.order.marker === m.key}" aria-label="${m.title} эллипс" title="${m.title}" style="--c:${m.hex}"></button>`).join("");
+  /* у каждого игрока свой цвет: цвет, который уже у другого игрока заявки, выбрать нельзя */
+  const hlOwner = (key, me) => key === "none" ? -1 : state.order.players.findIndex((q, j) => j !== me && q.marker === key);
+  const hlHtml = (i) => { const p = state.order.players[i];
+    return HL.map((m) => { const own = hlOwner(m.key, i), busy = own >= 0;
+      return m.key === "none"
+        ? `<button type="button" class="o2-hlb o2-hl-none" data-hl="none" aria-pressed="${p.marker === "none"}">Без обводки</button>`
+        : `<button type="button" class="o2-hlb o2-hl-c" data-hl="${m.key}" aria-pressed="${p.marker === m.key}"${busy ? ' aria-disabled="true"' : ""} aria-label="${m.title} эллипс${busy ? `, уже у игрока ${own + 1}` : ""}" title="${busy ? `Уже у игрока ${own + 1}` : m.title}" style="--c:${m.hex}"></button>`; }).join(""); };
+  /* форма: в одной игре две команды, значит в заявке не больше двух цветов формы */
+  const kitsOthers = (me) => [...new Set(state.order.players.filter((_, j) => j !== me).map((q) => q.kit))];
+  const kitAllowed = (key, me) => { const others = kitsOthers(me); return others.length < 2 || others.includes(key); };
+  const kitsTooMany = () => new Set(state.order.players.map((q) => q.kit)).size > 2;
   const TICK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>';
 
   function jerseySvg(p, i) {
@@ -365,7 +386,7 @@
   function stageRow() {
     const ps = state.order.players, sel = state.sel;
     const js = ps.map((p, i) => `<button type="button" class="o2-j${i === sel ? " on" : ""}" data-sel="${i}" aria-pressed="${i === sel}" aria-label="Игрок ${i + 1}${p.number ? `, номер ${esc(p.number)}` : ""}">
-        <span class="o2-jtag">Игрок ${i + 1}</span>${jerseySvg(p, i)}<span class="o2-ring${state.order.marker === "none" ? " hl-none" : ""}" style="--hl:${hlBy(state.order.marker).hex || "transparent"}" aria-hidden="true"></span></button>`).join("");
+        <span class="o2-jtag">Игрок ${i + 1}</span>${jerseySvg(p, i)}<span class="o2-ring${p.marker && p.marker !== "none" ? " hl" : " hl-none"}" style="--hl:${hlBy(p.marker).hex || "transparent"}" aria-hidden="true"></span></button>`).join("");
     const add = ps.length < MAXP ? `<button type="button" class="o2-jadd" data-act="add"><span class="o2-jadd-sw" aria-hidden="true"><svg viewBox="0 0 200 172"><path d="${SW}"/></svg>${ICON.plus}</span><span>Ещё игрок</span></button>` : "";
     return js + add;
   }
@@ -387,13 +408,18 @@
   function tabsHtml() {
     const ps = state.order.players;
     return ps.map((p, i) => { const k = kitBy(p.kit);
-      return `<button type="button" role="tab" class="o2-tab" data-sel="${i}" aria-selected="${i === state.sel}"><i style="--c:${k.hex};--on:${onKit(k.key)}">${esc(p.number || "?")}</i>Игрок ${i + 1}</button>`; }).join("")
+      const tab = `<button type="button" role="tab" class="o2-tab" data-sel="${i}" aria-selected="${i === state.sel}"><i style="--c:${k.hex};--on:${onKit(k.key)}">${esc(p.number || "?")}</i>Игрок ${i + 1}</button>`;
+      return ps.length > 1
+        ? `<span class="o2-tabw${i === state.sel ? " on" : ""}" role="presentation">${tab}<button type="button" class="o2-tab-x" data-del="${i}" aria-label="Убрать игрока ${i + 1}" title="Убрать игрока ${i + 1}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button></span>`
+        : tab; }).join("")
       + (ps.length < MAXP ? `<button type="button" class="o2-tab-add" data-act="add" aria-label="Добавить игрока">${ICON.plus}</button>` : "");
   }
 
   function editorHtml() {
     const ps = state.order.players, i = state.sel, p = ps[i], k = kitBy(p.kit);
-    const kits = KITS.map((x) => `<button type="button" class="o2-kit" data-kit="${x.key}" aria-pressed="${p.kit === x.key}" aria-label="${x.title} форма" title="${x.title}" style="--c:${x.hex}"></button>`).join("");
+    const two = kitsOthers(i).length >= 2;
+    const kits = KITS.map((x) => { const ok = kitAllowed(x.key, i);
+      return `<button type="button" class="o2-kit" data-kit="${x.key}" aria-pressed="${p.kit === x.key}"${ok ? "" : ' aria-disabled="true"'} aria-label="${x.title} форма${ok ? "" : ", недоступно: в заявке уже две команды"}" title="${ok ? x.title : "В игре две команды: третий цвет формы не выбрать"}" style="--c:${x.hex}"></button>`; }).join("");
     return `<div class="o2-row">
         <div class="o2-f"><label for="o2-num">Номер</label><input class="o2-num" id="o2-num" data-f="number" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" enterkeyhint="next" placeholder="00" value="${esc(p.number)}" aria-describedby="o2-err-num"></div>
         <div class="o2-f"><label for="o2-team">Команда, как на табло</label><input class="o2-in o2-team" id="o2-team" data-f="team" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="next" maxlength="60" placeholder="Например, Эдмонтон" value="${esc(p.team)}" aria-describedby="o2-err-team"></div>
@@ -402,6 +428,11 @@
       <p class="err" id="o2-err-team" role="alert" hidden>Напиши команду, как на табло.</p>
       <span class="o2-lbl" id="o2-kit-lbl">Цвет формы в этой игре: <b id="o2-kitname">${k.title.toLowerCase()}</b></span>
       <div class="o2-kits" role="group" aria-labelledby="o2-kit-lbl">${kits}</div>
+      ${two ? `<p class="o2-hint o2-kit-note">В игре две команды, поэтому в заявке только два цвета формы. Чтобы взять другой цвет, поменяй его у остальных игроков.</p>` : ""}
+      <p class="err" id="o2-err-kit" role="alert" hidden>В заявке больше двух цветов формы. В одной игре две команды — оставь два цвета.</p>
+      <span class="o2-lbl" id="o2-hl-lbl">Обводка этого игрока в ролике: <b id="o2-hlname">${hlName(p.marker || "none")}</b></span>
+      <div class="o2-hls" id="o2-hls" role="group" aria-labelledby="o2-hl-lbl">${hlHtml(i)}</div>
+      <p class="o2-hint">Цветной эллипс под ногами, чтобы игрока сразу было видно. У каждого игрока свой цвет, можно без обводки.</p>
       ${p.howto || p.showHow ? `<div class="o2-f"><label for="o2-how">Приметы</label><input class="o2-in" id="o2-how" data-f="howto" autocomplete="off" enterkeyhint="next" maxlength="120" placeholder="Левша, белый шлем, капитан" value="${esc(p.howto)}"></div>`
         : `<button type="button" class="o2-more" data-act="how">+ Приметы, если номер плохо видно</button>`}
       ${ps.length > 1 ? `<button type="button" class="o2-del" data-act="del">Убрать игрока ${i + 1}</button>` : ""}`;
@@ -437,11 +468,6 @@
             <p class="o2-hint">Нет ссылки под рукой? <button type="button" class="link" id="paste-demo">Заполнить примером</button></p>
           </div>
 
-          <div class="o2-sec">
-            <span class="o2-lbl" id="o2-hl-lbl">Обводка в ролике: <b id="o2-hlname">${hlName(o.marker)}</b></span>
-            <div class="o2-hls" id="o2-hls" role="group" aria-labelledby="o2-hl-lbl">${hlHtml()}</div>
-            <p class="o2-hint">Цветной эллипс под ногами игрока, чтобы его сразу было видно в ролике. Можно без него.</p>
-          </div>
 
           <div class="o2-sec">
             <div class="o2-tabs" id="o2-tabs" role="tablist" aria-label="Игроки">${tabsHtml()}</div>
@@ -471,11 +497,11 @@
   function orderMessage(o, ids) {
     const sc = SCOPES.find((s) => s[0] === o.scope)[1].toLowerCase();
     const ps = o.players;
-    const who = (p) => `№${p.number}, форма ${kitBy(p.kit).title.toLowerCase()}, ${p.team}${p.howto ? `. Приметы: ${p.howto}` : ""}`;
+    const who = (p) => `№${p.number}, форма ${kitBy(p.kit).title.toLowerCase()}, ${p.team}, обводка: ${hlName(p.marker || "none")}${p.howto ? `. Приметы: ${p.howto}` : ""}`;
     const lines = ps.length === 1
       ? [`Привет! Хочу смены. Заказ №${ids[0]}`, `Игра: ${o.url}`, `Игрок: ${who(ps[0])}`]
       : [`Привет! Хочу смены для ${ps.length} игроков. Заявка №${ids[0]}`, `Игра: ${o.url}`, ...ps.map((p, i) => `${i + 1}. ${who(p)} (заказ №${ids[i]})`)];
-    return [...lines, `Разобрать: ${sc}`, `Обводка: ${hlName(o.marker || "none")}`, o.tg ? `Ответить: @${o.tg}` : ""].filter(Boolean).join("\n");
+    return [...lines, `Разобрать: ${sc}`, o.tg ? `Ответить: @${o.tg}` : ""].filter(Boolean).join("\n");
   }
 
   function bindOrder() {
@@ -504,7 +530,8 @@
     const addPlayer = () => {
       if (o.players.length >= MAXP) return;
       const last = o.players[o.players.length - 1];
-      o.players.push({ number: "", kit: last?.kit || "blue", team: last?.team || "", howto: "" });
+      const freeHl = HL.slice(1).find((m) => !o.players.some((q) => q.marker === m.key));
+      o.players.push({ number: "", kit: last?.kit || "blue", team: last?.team || "", howto: "", marker: last && last.marker !== "none" && freeHl ? freeHl.key : "none" });
       select(o.players.length - 1, "#o2-num");
       $(".o2-j.on", row)?.animate?.([{ opacity: 0, transform: "translateY(16px) scale(.92)" }, { opacity: 1, transform: "none" }], { duration: reduced ? 1 : 420, easing: "cubic-bezier(0,1.085,.4,1)" });
     };
@@ -516,17 +543,18 @@
       try { const t = (await navigator.clipboard.readText()).trim(); if (t) { url.value = t; o.url = t; paintUrl(); (checkUrl(t)?.ok ? $("#o2-num") : url)?.focus(); } }
       catch { url.focus(); toast("Вставь ссылку вручную: долгое нажатие в поле"); }
     });
-    $("#o2-hls").addEventListener("click", (e) => {
-      const b = e.target.closest("[data-hl]"); if (!b) return;
-      o.marker = b.dataset.hl;
-      $$("button", $("#o2-hls")).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      $("#o2-hlname").textContent = hlName(o.marker);
-      paint();
-    });
     $("#scopes").addEventListener("click", (e) => { const b = e.target.closest("[data-scope]"); if (!b) return; o.scope = b.dataset.scope; $$("button", $("#scopes")).forEach((x) => x.setAttribute("aria-pressed", String(x === b))); $("#o2-chips").innerHTML = stageChips(); saveDraft(); });
 
     /* выбор игрока: свитер на площадке или вкладка */
+    /* убрать игрока: крестик на вкладке или кнопка в редакторе */
+    const delPlayer = (i) => {
+      if (o.players.length < 2) return;
+      o.players.splice(i, 1);
+      select(Math.max(0, Math.min(i < state.sel || i === o.players.length ? state.sel - 1 : state.sel, o.players.length - 1)));
+      toast(`Игрок убран из заявки`);
+    };
     const onPick = (e) => {
+      const x = e.target.closest("[data-del]"); if (x) { delPlayer(+x.dataset.del); return; }
       const s = e.target.closest("[data-sel]"); if (s) { select(+s.dataset.sel); return; }
       if (e.target.closest('[data-act="add"]')) addPlayer();
     };
@@ -540,11 +568,21 @@
       paint();
     });
     ed.addEventListener("click", (e) => {
-      const kb = e.target.closest("[data-kit]"), act = e.target.closest("[data-act]"), p = o.players[state.sel];
-      if (kb) { p.kit = kb.dataset.kit; $$(".o2-kit", ed).forEach((b) => b.setAttribute("aria-pressed", String(b === kb))); $("#o2-kitname").textContent = kitBy(p.kit).title.toLowerCase(); paint(); return; }
+      const kb = e.target.closest("[data-kit]"), hb = e.target.closest("[data-hl]"), act = e.target.closest("[data-act]"), p = o.players[state.sel];
+      if (kb) {
+        if (kb.getAttribute("aria-disabled") === "true") { toast("В игре две команды: третий цвет формы не выбрать"); return; }
+        p.kit = kb.dataset.kit;
+        const mate = o.players.find((q, j) => j !== state.sel && q.kit === p.kit && q.team);   // та же форма — та же команда
+        if (mate && !p.team) p.team = mate.team;
+        paint(); paintEditor(); return;
+      }
+      if (hb) {
+        if (hb.getAttribute("aria-disabled") === "true") { toast(hb.title); return; }
+        p.marker = hb.dataset.hl; paint(); paintEditor(); return;
+      }
       if (!act) return;
       if (act.dataset.act === "how") { p.showHow = true; paintEditor("#o2-how"); }
-      if (act.dataset.act === "del" && o.players.length > 1) { o.players.splice(state.sel, 1); select(Math.max(0, state.sel - 1)); }
+      if (act.dataset.act === "del") delPlayer(state.sel);
     });
     ed.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || !e.target.matches("input")) return; e.preventDefault();
@@ -584,6 +622,7 @@
           first = !numOk(p.number) ? $("#o2-num") : $("#o2-team");
         }
       }
+      if (!first && kitsTooMany()) { const e2 = $("#o2-err-kit"); if (e2) e2.hidden = false; first = $(".o2-kit", ed); }
       if (!first && !tgOk()) { setErr(tg, "#err-tg", true); first = tg; }
       if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); return; }
       openConfirm();
@@ -611,7 +650,7 @@
     $("#send-order").addEventListener("click", () => {
       const sc = SCOPES.find((s) => s[0] === o.scope);
       o.players.forEach((p, i) => {
-        S.add({ id: ids[i], created: Date.now(), url: o.url, number: +p.number, kit: p.kit, team: p.team, howto: p.howto, scope: o.scope, tg: o.tg, marker: o.marker || "none", msg,
+        S.add({ id: ids[i], created: Date.now(), url: o.url, number: +p.number, kit: p.kit, team: p.team, howto: p.howto, scope: o.scope, tg: o.tg, marker: p.marker || "none", msg,
           period: sc[1], real: o.url.includes(O.youtube) ? "game" : "", ...(n > 1 ? { group: ids[0], groupIds: ids } : {}) });
       });
       // расчёт на видеокарте заявка не запускает: его запускает владелец кнопкой в админке (assets/gpu.js)
@@ -776,7 +815,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261121c";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261121d";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша

@@ -363,7 +363,8 @@ body[data-route="order"] .dock { display: none; }
 .o2-plate { font: italic 800 15px var(--display); letter-spacing: 1px; }
 .o2-no { font: italic 900 80px var(--display); }
 .o2-ring { width: 112%; height: 0; padding-bottom: 20%; margin-top: -11%; border-radius: 50%; background: rgba(255, 255, 255, .06); transition: background .2s, box-shadow .2s; }
-.o2-j.on .o2-ring { background: color-mix(in srgb, var(--hl) 14%, transparent); box-shadow: 0 0 0 4px var(--hl), 0 0 28px color-mix(in srgb, var(--hl) 35%, transparent); }
+.o2-ring.hl { background: color-mix(in srgb, var(--hl) 10%, transparent); box-shadow: 0 0 0 3px var(--hl); }   /* обводка игрока его цветом */
+.o2-j.on .o2-ring.hl { background: color-mix(in srgb, var(--hl) 16%, transparent); box-shadow: 0 0 0 4px var(--hl), 0 0 28px color-mix(in srgb, var(--hl) 35%, transparent); }
 .o2-j.on .o2-ring.hl-none { background: rgba(255, 255, 255, .08); box-shadow: 0 0 0 2px rgba(255, 255, 255, .28); }   /* без обводки: только тень выбранного */
 .o2-jadd { flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 76px; margin-bottom: 18px; color: var(--mute); font-size: 13px; font-weight: 600; }
 .o2-jadd:hover { color: #fff; }
@@ -734,3 +735,30 @@ body[data-route="order"] .dock { display: none; }
 .o2-hlb[aria-pressed="true"] { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue); }
 .o2-bar-when { font-size: 13px; line-height: 1.3; color: var(--mute); }
 .o2-bar-when b { color: #fff; font-weight: 600; }
+
+/* ===== Заказ: убрать игрока, ограничения цветов (V17) ===== */
+.o2-tabw { flex: none; display: inline-flex; align-items: stretch; }
+.o2-tabw .o2-tab { padding-right: 6px; }
+.o2-tab-x { display: grid; place-items: center; width: 34px; height: 46px; color: #5A6478; }
+.o2-tab-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.o2-tab-x:hover { color: var(--bad); }
+.o2-tabw.on { background: var(--ink); }
+.o2-tabw.on .o2-tab-x { color: #AEB8CC; }
+.o2-tabw.on .o2-tab-x:hover { color: #fff; }
+.o2-tab-x:focus-visible { outline-offset: -4px; }
+.o2-kit[aria-disabled="true"], .o2-hlb[aria-disabled="true"] { opacity: .28; cursor: not-allowed; }
+.o2-kit-note { margin-top: 8px; }
+.o2-hls { margin-top: 8px; margin-bottom: 4px; }
+
+/* ===== Главная: статистика за сезон ===== */
+.season { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--line); }
+.season li { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.season h3 { font-size: 40px; line-height: .9; }
+.season p { margin-top: 8px; max-width: 320px; font-size: 15px; line-height: 1.5; color: var(--mute); }
+@media (min-width: 900px) {
+  .season { grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+  .season li { padding: 26px 24px 30px; border-bottom: 0; border-right: 1px solid var(--line); }
+  .season li:first-child { padding-left: 0; }
+  .season li:last-child { border-right: 0; }
+  .season h3 { font-size: 52px; }
+}
