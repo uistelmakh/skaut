@@ -815,7 +815,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261121d";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261121e";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
@@ -859,8 +859,14 @@
     if (route === "order") bindOrder();
     if (route === "status") bindStatus(rest[0]);
   }
+  /* переход с анимацией браузера; если она не началась за 400 мс (окно не рисуется, слабый телефон) — без неё. mount — ровно один раз */
   function go() {
-    if (document.startViewTransition && !reduced && view.innerHTML) { const t = document.startViewTransition(mount); [t.ready, t.finished, t.updateCallbackDone].forEach((p) => p.catch(() => {})); } else mount();
+    let done = false;
+    const run = () => { if (done) return; done = true; mount(); };
+    if (document.startViewTransition && !reduced && view.innerHTML) {
+      const t = document.startViewTransition(run); [t.ready, t.finished, t.updateCallbackDone].forEach((p) => p.catch(() => {}));
+      setTimeout(() => { if (!done) { t.skipTransition?.(); run(); } }, 400);
+    } else run();
   }
 
   /* ---------- движение: только шкала смен прорисовывается, когда попала на экран. Цифры не «докручиваются» ---------- */
