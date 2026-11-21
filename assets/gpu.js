@@ -252,7 +252,7 @@
   /* ошибки функции — человеческими словами */
   const WHY = {
     youtube: "YouTube облако Яндекса не скачивает. Такой матч считается только на Маке.",
-    not_vk: "Нужна ссылка на видео VK (vkvideo.ru или vk.com/video…).",
+    not_vk: "Нужна ссылка на видео VK (vkvideo.ru или vk.com/video…) или Rutube (rutube.ru/video/…).",
     only_exams: "Это экзаменационный период — его не считаем.",
     busy: "Видеокарта уже занята другим расчётом. Дождись конца или останови его.",
     already_running: "Этот заказ уже считается.",
@@ -328,7 +328,7 @@
           ${est.reuse?.periods?.length ? `<dt>Готовый матч</dt><dd class="ok">Эта игра уже посчитана для заказа #${esc(est.reuse.from_site_id)}${est.reuse.at ? ` (${esc(dayOf(est.reuse.at))})` : ""}<small>Возьмём готовое для ${est.reuse.periods.length === 1 ? `периода ${est.reuse.periods[0]}` : `периодов ${est.reuse.periods.join(", ")}`}${Object.keys(est.reuse.why || {}).length ? `; ${esc(Object.entries(est.reuse.why).map(([p, w]) => `${p === "4" ? "овертайм" : `период ${p}`} — ${w}`).join("; "))}` : ""}</small></dd>`
             : Object.keys(est.reuse?.why || {}).length ? `<dt>Готовый матч</dt><dd>Эта игра уже считалась, но готовое не берём<small>${esc(Object.values(est.reuse.why)[0])}</small></dd>` : ""}
           <dt>Оценка</dt><dd${est.reuse?.periods?.length ? ' class="ok"' : ""}>≈ ${est.minutes} мин, ≈ ${est.rub} ₽ ${est.reuse?.periods?.length ? `<small><s>вместо ≈ ${est.reuse.minutes_full} мин и ≈ ${est.reuse.rub_full} ₽</s></small>` : ""}<small>потолок ${est.max_rub} ₽ (срок машины ${est.max_hours} ч)</small></dd>
-          <dt>Запись в VK</dt><dd class="${est.vk.ready ? "ok" : "warn"}">${esc(est.vk.note)}</dd>
+          <dt>Запись</dt><dd class="${est.vk.ready ? "ok" : "warn"}">${esc(est.vk.note)}</dd>
           ${est.busy ? `<dt>Видеокарта</dt><dd class="warn">занята (${esc(est.busy)}): расчёт встанет в очередь</dd>` : ""}
           <dt>Запусков сегодня</dt><dd class="${est.today >= est.limit ? "warn" : ""}">${est.today} из ${est.limit}</dd>
           ${est.budget ? `<dt>Потрачено сегодня</dt><dd class="${est.spent_today >= est.budget - 15 ? "warn" : ""}">${Math.round(est.spent_today)} из ${Math.round(est.budget)} ₽</dd>` : ""}` : `<dt>${noGpu ? "Почему" : "Оценка"}</dt><dd>${estErr ? esc(estErr) : "считаю…"}</dd>`}</dl>`}

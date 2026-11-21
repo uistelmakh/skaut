@@ -641,6 +641,7 @@
       ids.push(id);
     }
     const msg = orderMessage(o, ids);
+    track("order_check");
     openModal(`<div class="confirm">
       <div class="confirm-head"><h2 id="confirm-title">Проверь заявку</h2><button class="icon-btn" type="button" data-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p class="cap">Нажми кнопку: откроется Telegram с этим текстом. Там нажми «Отправить».</p>
@@ -648,6 +649,7 @@
       <div class="confirm-actions"><a class="btn btn--accent" id="send-order" href="${tgLink(msg)}" target="_blank" rel="noopener">${ICON.tg}Отправить в Telegram</a><button class="btn btn--ghost" data-close>Исправить</button></div>
       <p class="cap">Заявку получит Сергей, автор сервиса (@${esc(B.telegram)}). Видео нигде не публикуется.</p></div>`);
     $("#send-order").addEventListener("click", () => {
+      track("order_send");
       const sc = SCOPES.find((s) => s[0] === o.scope);
       o.players.forEach((p, i) => {
         S.add({ id: ids[i], created: Date.now(), url: o.url, number: +p.number, kit: p.kit, team: p.team, howto: p.howto, scope: o.scope, tg: o.tg, marker: p.marker || "none", msg,
@@ -745,7 +747,7 @@
   function privacy() {
     return doc("Что мы храним и зачем", "Коротко и без мелкого шрифта.", [
       ["Что собираем", ["Ник в Telegram, чтобы прислать результат.", "Ссылку на запись игры, номер, цвет формы и название команды, чтобы найти игрока.", "Лица не распознаём. Игрока ищем по номеру на спине и цвету формы."]],
-      ["Зачем", ["Найти смены в записи, собрать видео и ролик, прислать ссылку.", "Рекламу по этим данным не показываем и никому их не передаём."]],
+      ["Зачем", ["Найти смены в записи, собрать видео и ролик, прислать ссылку.", "Посещения сайта считает Яндекс Метрика: сколько человек зашло и дошло до заявки. Записи экрана не ведём.", "Рекламу по этим данным не показываем и никому их не передаём."]],
       ["Кто видит видео", ["Ты, по личной ссылке. Ссылку можно переслать, тогда её увидит тот, кому ты её дал.", "Автор сервиса, когда проверяет смены перед отправкой.", "В соцсети и рилсы твоё видео не попадает без отдельного согласия."]],
       ["Сколько храним", [`Видео смен и ролик: ${OFFER.packMonths} месяцев. <i>Срок уточнить у юриста.</i>`, "Запись игры целиком удаляем после обработки.", "Заявку и ник: пока действует пакет или пока не попросишь удалить. <i>Уточнить у юриста.</i>"]],
       ["Как удалить", [`Напиши «удалите мои данные» в Telegram @${esc(B.telegram)}.`, "Удалим видео, ролик и заявку и подтвердим ответным сообщением. <i>Срок ответа уточнить у юриста.</i>"]],
@@ -815,7 +817,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261121e";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261121f";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
@@ -823,6 +825,16 @@
       el.onload = done; el.onerror = done; document.head.appendChild(el);
     });
   }
+  /* ---------- Яндекс Метрика: только если в config.js задан номер счётчика ---------- */
+  const MID = Number(window.METRIKA_ID) || 0;
+  if (MID) {
+    window.ym = window.ym || function () { (window.ym.a = window.ym.a || []).push(arguments); }; window.ym.l = Date.now();
+    const s = document.createElement("script"); s.async = true; s.src = "https://mc.yandex.ru/metrika/tag.js"; document.head.appendChild(s);
+    window.ym(MID, "init", { defer: true, clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: false });
+  }
+  const track = (goal) => { try { if (MID) window.ym(MID, "reachGoal", goal); } catch { /* счётчик не загрузился — не мешаем */ } };
+  const hit = () => { try { if (MID) window.ym(MID, "hit", location.href, { title: document.title }); } catch { /* — */ } };
+
   function mount() {
     stopStatus?.(); stopStatus = null;
     const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
@@ -856,7 +868,9 @@
     else window.scrollTo(0, 0);
     showDock(true);
     requestAnimationFrame(() => { view.classList.add("go-in"); reveal(); });
-    if (route === "order") bindOrder();
+    hit();
+    if (route === "order") { track("order_open"); bindOrder(); }
+    if (route === "result") track("result_open");
     if (route === "status") bindStatus(rest[0]);
   }
   /* переход с анимацией браузера; если она не началась за 400 мс (окно не рисуется, слабый телефон) — без неё. mount — ровно один раз */
