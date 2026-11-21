@@ -106,13 +106,13 @@
   const SCOPES = [["p1", "1-й период", "1-й"], ["p2", "2-й период", "2-й"], ["p3", "3-й период", "3-й"], ["game", "Вся игра", "Вся игра"]];
   const DRAFT = "scout.order.draft";
   /* черновик формы: ссылка, период, ник и список игроков (до V9 был один игрок полями number/kit/team) */
-  const blankOrder = () => ({ url: "", scope: "game", tg: "", players: [{ number: "", kit: "blue", team: "", howto: "", marker: "none" }] });
+  const blankOrder = () => ({ url: "", scope: "game", players: [{ number: "", kit: "blue", team: "", howto: "", marker: "none" }] });
   const loadDraft = () => {
     try {
       const d = JSON.parse(sessionStorage.getItem(DRAFT) || "{}"), b = blankOrder();
       const players = Array.isArray(d.players) && d.players.length ? d.players.slice(0, 5)
         : [{ number: d.number || "", kit: d.kit || "blue", team: d.team || "", howto: d.howto || "" }];
-      return { url: d.url || b.url, scope: d.scope || b.scope, tg: d.tg || b.tg, players: players.map((p) => ({ ...b.players[0], ...(d.marker ? { marker: d.marker } : {}), ...p })) };
+      return { url: d.url || b.url, scope: d.scope || b.scope, players: players.map((p) => ({ ...b.players[0], ...(d.marker ? { marker: d.marker } : {}), ...p })) };
     } catch { return blankOrder(); }
   };
   const saveDraft = () => { try { sessionStorage.setItem(DRAFT, JSON.stringify(state.order)); } catch { /* без хранилища черновик живёт до перезагрузки */ } };
@@ -145,8 +145,8 @@
     const faq = [
       ["А если найдёт не меня?", "Каждую игру после ИИ проверяет человек, смену за сменой. Если мы не уверены, что это ты, такой смены в результате не будет. Не нашли тебя совсем? Ничего не платишь."],
       ["Какие трансляции подходят?", "Запись игры на VK Видео, YouTube или Rutube, где на спине виден номер. Лига любая. Видео с телефона и файлы из облака пока не разбираем. Вставь ссылку в форму: она сразу скажет, подходит или нет."],
-      ["Можно заказать не себе?", "Да. Ребёнку, тренеру, другу: нужен только номер на спине и цвет формы. Можно сразу несколько игроков из одной игры. Видео видит только тот, кто заказал, по личной ссылке."],
-      ["Где мои данные?", `На серверах в России. Лица мы не распознаём: ищем по номеру и цвету формы. Удалим всё по первой просьбе. Подробно: <a class="link" href="#/privacy">что мы храним и зачем</a>.`],
+      ["Можно заказать не себе?", "Да. Ребёнку, тренеру, другу: нужен только номер на спине и цвет формы. Можно сразу несколько игроков из одной игры. Видео приходит в Telegram тому, кто заказал, по личной ссылке."],
+      ["Где мои данные?", `На сайте мы ничего не храним: заявка — это сообщение в Telegram, туда же приходят видео. Лица не распознаём: ищем по номеру и цвету формы. Подробно: <a class="link" href="#/privacy">что мы храним и зачем</a>.`],
       ["Как работает пакет?", `Берёшь 5 или 10 игр и присылаешь их, когда играешь. Пакет действует ${OFFER.packMonths} месяцев. Платишь после первого результата. Не нашли тебя в игре? Она не списывается.`],
     ].map(([q, a]) => `<details class="faq-item"><summary>${q}</summary><p>${a}</p></details>`).join("");
     const heroTrust = `${pilot ? `Первая игра бесплатно: ${seats().toLowerCase()}. ` : ""}Не нашли игрока в записи — не платишь.`;
@@ -474,14 +474,8 @@
             <div class="o2-ed" id="o2-ed" role="tabpanel">${editorHtml()}</div>
           </div>
 
-          <div class="o2-sec">
-            <label class="o2-lbl" for="f-tg">Куда прислать <span class="opt">необязательно</span></label>
-            <div class="o2-at"><span aria-hidden="true">@</span><input class="o2-in" id="f-tg" name="tg" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send" maxlength="32" placeholder="ник в Telegram" value="${esc(o.tg)}" aria-describedby="err-tg tg-hint"></div>
-            <p class="err" id="err-tg" role="alert" hidden>Ник латиницей, 4–32 знака: буквы, цифры и «_». Или оставь поле пустым.</p>
-            <p class="o2-hint" id="tg-hint">Пусто — ответим на твоё сообщение в Telegram.</p>
-          </div>
           <div class="o2-sec o2-trust"><p class="o2-trustline o2-trust-m">${orderTrust}</p>
-            <p class="o2-legal">Отправляя заявку, соглашаешься с <a class="link" href="#/privacy">обработкой данных</a> и <a class="link" href="#/terms">условиями</a>. Видео видишь только ты, по личной ссылке.</p></div>
+            <p class="o2-legal">Отправляя заявку, соглашаешься с <a class="link" href="#/privacy">обработкой данных</a> и <a class="link" href="#/terms">условиями</a>. На сайте ничего не сохраняется: заявка уходит сообщением в Telegram, видео придёт туда же.</p></div>
         </div>
 
         <div class="o2-pfoot">
@@ -501,7 +495,7 @@
     const lines = ps.length === 1
       ? [`Привет! Хочу смены. Заказ №${ids[0]}`, `Игра: ${o.url}`, `Игрок: ${who(ps[0])}`]
       : [`Привет! Хочу смены для ${ps.length} игроков. Заявка №${ids[0]}`, `Игра: ${o.url}`, ...ps.map((p, i) => `${i + 1}. ${who(p)} (заказ №${ids[i]})`)];
-    return [...lines, `Разобрать: ${sc}`, o.tg ? `Ответить: @${o.tg}` : ""].filter(Boolean).join("\n");
+    return [...lines, `Разобрать: ${sc}`].join("\n");
   }
 
   function bindOrder() {
@@ -587,18 +581,14 @@
     ed.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || !e.target.matches("input")) return; e.preventDefault();
       const ins = $$("input", ed), next = ins[ins.indexOf(e.target) + 1];
-      if (next) next.focus(); else if (state.sel < o.players.length - 1) select(state.sel + 1, "#o2-num"); else $("#f-tg").focus();
+      if (next) next.focus(); else if (state.sel < o.players.length - 1) select(state.sel + 1, "#o2-num"); else $(".o2-go")?.focus();
     });
     ed.addEventListener("focusout", (e) => { if (e.target.dataset.f === "number" && e.target.value && !numOk(e.target.value)) setErr(e.target, "#o2-err-num", true); });
 
-    /* ник */
-    const tg = $("#f-tg"), tgOk = () => !o.tg || /^[a-zA-Z0-9_]{4,32}$/.test(o.tg);
-    tg.addEventListener("input", () => { tg.value = tg.value.replace(/^.*t(elegram)?\.me\//i, "").replace(/^@+/, "").replace(/[\s/?#].*$/, ""); o.tg = tg.value; if (tgOk()) setErr(tg, "#err-tg", false); saveDraft(); });
-    tg.addEventListener("blur", () => { if (!tgOk()) setErr(tg, "#err-tg", true); });
 
     $("#paste-demo").addEventListener("click", () => {
-      Object.assign(o, { url: `https://www.youtube.com/watch?v=${O.youtube}`, scope: "p2", tg: "demo_player", players: [{ number: "97", kit: "blue", team: "Эдмонтон", howto: "" }] });
-      url.value = o.url; tg.value = o.tg; setErr(url, "#err-url", false); setErr(tg, "#err-tg", false);
+      Object.assign(o, { url: `https://www.youtube.com/watch?v=${O.youtube}`, scope: "p2", players: [{ number: "97", kit: "blue", team: "Эдмонтон", howto: "" }] });
+      url.value = o.url; setErr(url, "#err-url", false);
       $$("button", $("#scopes")).forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.scope === o.scope)));
       select(0); paintUrl();
     });
@@ -623,7 +613,6 @@
         }
       }
       if (!first && kitsTooMany()) { const e2 = $("#o2-err-kit"); if (e2) e2.hidden = false; first = $(".o2-kit", ed); }
-      if (!first && !tgOk()) { setErr(tg, "#err-tg", true); first = tg; }
       if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); return; }
       openConfirm();
     });
@@ -641,24 +630,21 @@
       ids.push(id);
     }
     const msg = orderMessage(o, ids);
-    track("order_check");
     openModal(`<div class="confirm">
       <div class="confirm-head"><h2 id="confirm-title">Проверь заявку</h2><button class="icon-btn" type="button" data-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p class="cap">Нажми кнопку: откроется Telegram с этим текстом. Там нажми «Отправить».</p>
       <pre class="msg">${esc(msg)}</pre>
       <div class="confirm-actions"><a class="btn btn--accent" id="send-order" href="${tgLink(msg)}" target="_blank" rel="noopener">${ICON.tg}Отправить в Telegram</a><button class="btn btn--ghost" data-close>Исправить</button></div>
-      <p class="cap">Заявку получит Сергей, автор сервиса (@${esc(B.telegram)}). Видео нигде не публикуется.</p></div>`);
+      <p class="cap">Заявку получит Сергей, автор сервиса (@${esc(B.telegram)}). На сайте она не сохраняется, видео нигде не публикуется.</p></div>`);
     $("#send-order").addEventListener("click", () => {
-      track("order_send");
-      const sc = SCOPES.find((s) => s[0] === o.scope);
-      o.players.forEach((p, i) => {
-        S.add({ id: ids[i], created: Date.now(), url: o.url, number: +p.number, kit: p.kit, team: p.team, howto: p.howto, scope: o.scope, tg: o.tg, marker: p.marker || "none", msg,
-          period: sc[1], real: o.url.includes(O.youtube) ? "game" : "", ...(n > 1 ? { group: ids[0], groupIds: ids } : {}) });
-      });
-      // расчёт на видеокарте заявка не запускает: его запускает владелец кнопкой в админке (assets/gpu.js)
+      // на сайте ничего не сохраняем: заявка — это сообщение в Telegram, дальше всё там
       state.order = blankOrder(); state.sel = 0; saveDraft();
-      closeSheet(true);
-      setTimeout(() => { location.hash = `#/status/${ids[0]}`; }, 60);
+      setTimeout(() => {
+        $(".confirm").innerHTML = `<div class="confirm-head"><h2 id="confirm-title">Заявка ушла в Telegram</h2><button class="icon-btn" type="button" data-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+          <p class="cap">Если Telegram не открылся или сообщение не отправилось, напиши <a class="link" href="https://t.me/${esc(B.telegram)}" target="_blank" rel="noopener">@${esc(B.telegram)}</a> и вставь текст заявки.</p>
+          <p>Ответим в Telegram, видео смен и ролик пришлём туда же. На сайте ничего не сохраняется.</p>
+          <div class="confirm-actions"><a class="btn btn--accent" href="#/" data-close>На главную</a></div>`;
+      }, 400);
     });
   }
 
@@ -746,11 +732,11 @@
       <p class="cap">Вопросы: <a class="link" href="https://t.me/${B.telegram}" target="_blank" rel="noopener">@${esc(B.telegram)}</a> в Telegram. <a class="link" href="#/">На главную</a></p></div>`;
   function privacy() {
     return doc("Что мы храним и зачем", "Коротко и без мелкого шрифта.", [
-      ["Что собираем", ["Ник в Telegram, чтобы прислать результат.", "Ссылку на запись игры, номер, цвет формы и название команды, чтобы найти игрока.", "Лица не распознаём. Игрока ищем по номеру на спине и цвету формы."]],
-      ["Зачем", ["Найти смены в записи, собрать видео и ролик, прислать ссылку.", "Посещения сайта считает Яндекс Метрика: сколько человек зашло и дошло до заявки. Записи экрана не ведём.", "Рекламу по этим данным не показываем и никому их не передаём."]],
-      ["Кто видит видео", ["Ты, по личной ссылке. Ссылку можно переслать, тогда её увидит тот, кому ты её дал.", "Автор сервиса, когда проверяет смены перед отправкой.", "В соцсети и рилсы твоё видео не попадает без отдельного согласия."]],
-      ["Сколько храним", [`Видео смен и ролик: ${OFFER.packMonths} месяцев. <i>Срок уточнить у юриста.</i>`, "Запись игры целиком удаляем после обработки.", "Заявку и ник: пока действует пакет или пока не попросишь удалить. <i>Уточнить у юриста.</i>"]],
-      ["Как удалить", [`Напиши «удалите мои данные» в Telegram @${esc(B.telegram)}.`, "Удалим видео, ролик и заявку и подтвердим ответным сообщением. <i>Срок ответа уточнить у юриста.</i>"]],
+      ["Что сохраняет сайт", ["Ничего. Форма только собирает текст заявки, а отправляешь его ты сам — сообщением в Telegram.", "Счётчиков посещений и рекламы на сайте нет."]],
+      ["Что нужно для работы", ["Ссылка на запись игры, номер, цвет формы и название команды — из твоего сообщения в Telegram.", "Лица не распознаём. Игрока ищем по номеру на спине и цвету формы."]],
+      ["Куда приходит результат", ["В Telegram: видео смен и ролик присылаем в переписку с тобой.", "В соцсети и рилсы твоё видео не попадает без отдельного согласия."]],
+      ["Сколько храним", ["Запись игры и видео смен лежат в облаке в России только пока идёт расчёт и отправка, потом удаляются.", "Переписка — в твоём Telegram, удалить её можешь в любой момент."]],
+      ["Как удалить", [`Напиши «удалите мои данные» в Telegram @${esc(B.telegram)}: удалим всё, что осталось после заказа, и подтвердим ответом.`]],
       ["Кто отвечает за данные", [`${esc(B.author)}, автор сервиса. <i>Статус (самозанятый или ИП) и уведомление в Роскомнадзор уточнить у юриста.</i>`, "Данные лежат на серверах в России."]],
     ]);
   }
@@ -817,7 +803,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261121f";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261121g";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
@@ -825,16 +811,6 @@
       el.onload = done; el.onerror = done; document.head.appendChild(el);
     });
   }
-  /* ---------- Яндекс Метрика: только если в config.js задан номер счётчика ---------- */
-  const MID = Number(window.METRIKA_ID) || 0;
-  if (MID) {
-    window.ym = window.ym || function () { (window.ym.a = window.ym.a || []).push(arguments); }; window.ym.l = Date.now();
-    const s = document.createElement("script"); s.async = true; s.src = "https://mc.yandex.ru/metrika/tag.js"; document.head.appendChild(s);
-    window.ym(MID, "init", { defer: true, clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: false });
-  }
-  const track = (goal) => { try { if (MID) window.ym(MID, "reachGoal", goal); } catch { /* счётчик не загрузился — не мешаем */ } };
-  const hit = () => { try { if (MID) window.ym(MID, "hit", location.href, { title: document.title }); } catch { /* — */ } };
-
   function mount() {
     stopStatus?.(); stopStatus = null;
     const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
@@ -868,9 +844,7 @@
     else window.scrollTo(0, 0);
     showDock(true);
     requestAnimationFrame(() => { view.classList.add("go-in"); reveal(); });
-    hit();
-    if (route === "order") { track("order_open"); bindOrder(); }
-    if (route === "result") track("result_open");
+    if (route === "order") bindOrder();
     if (route === "status") bindStatus(rest[0]);
   }
   /* переход с анимацией браузера; если она не началась за 400 мс (окно не рисуется, слабый телефон) — без неё. mount — ровно один раз */

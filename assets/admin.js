@@ -130,6 +130,7 @@
         <button class="adm-bell${soundOn() ? " on" : ""}" id="a-bell" aria-pressed="${soundOn()}" title="Звук при новом заказе в «Нужна помощь»"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg><span>${soundOn() ? "звук вкл" : "звук выкл"}</span></button>
         ${window.GPU?.ready() ? `<button class="adm-bell${window.GPU.key() ? " on" : ""}" id="a-gpu" title="Ключ видеокарты на этом устройстве (assets/gpu.js)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M15 12v2"/></svg><span>${window.GPU.key() ? "видеокарта: ключ есть" : "видеокарта: ввести ключ"}</span></button>` : ""}
         ${window.GPU?.ready() ? `<button class="adm-bell" id="a-log" title="Журнал системы: запуски, отказы, машины, ошибки"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg><span>журнал</span></button>` : ""}
+        <button class="adm-bell" id="a-paste" title="Создать заказ из сообщения клиента в Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>заявка из Telegram</span></button>
         <button class="adm-help-btn" id="a-help" title="Клавиши">${kbd("?")}</button>
       </header>
       <h1 class="vh">${crumb ? "Заказ оператора" : "Очередь заказов оператора"}</h1>
@@ -632,6 +633,63 @@
       });
     }
   }
+  /* ---------- заявка из Telegram: сайт ничего не сохраняет (V19), заказ для расчёта создаёт оператор из сообщения клиента ---------- */
+  const SC_BY = { "1-й период": "p1", "2-й период": "p2", "3-й период": "p3", "вся игра": "game" };
+  function parseTgOrder(text) {
+    const lines = String(text || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const url = (lines.find((l) => /^Игра:/i.test(l)) || "").replace(/^Игра:\s*/i, "").trim();
+    const scTxt = (lines.find((l) => /^Разобрать:/i.test(l)) || "").replace(/^Разобрать:\s*/i, "").trim().toLowerCase();
+    const head = lines.find((l) => /(Заказ|Заявка) №\d+/.test(l)) || "";
+    const first = +(head.match(/№(\d+)/) || [])[1] || 0;
+    const kitKey = (s) => (KITS.find((k) => k.title.toLowerCase() === String(s).trim().toLowerCase()) || {}).key;
+    const hlKey = (s) => { s = String(s || "").trim().toLowerCase(); if (!s || s.startsWith("без")) return "none";
+      const m = (window.MARKERS || []).find((x) => s.startsWith(x.title.toLowerCase())); return m ? m.key : "none"; };
+    const re = /№(\d{1,3}),\s*форма\s+([^,]+),\s*(.+?)(?:,\s*обводка:\s*(.+?))?(?:\.\s*Приметы:\s*(.+?))?(?:\s*\(заказ №(\d+)\))?$/;
+    const players = lines.filter((l) => /^(Игрок:|\d+\.)\s*№/.test(l)).map((l) => {
+      const m = l.replace(/^(Игрок:|\d+\.)\s*/, "").match(re); if (!m) return null;
+      return { number: m[1], kit: kitKey(m[2]), kitTitle: m[2], team: m[3].trim(), marker: hlKey(m[4]), howto: (m[5] || "").trim(), id: +m[6] || 0 };
+    }).filter(Boolean);
+    const errs = [];
+    if (!/^https?:\/\//.test(url)) errs.push("нет строки «Игра: ссылка»");
+    if (!players.length) errs.push("не нашёл ни одного игрока (строки «Игрок: №…» или «1. №…»)");
+    players.forEach((p, i) => { if (!p.kit) errs.push(`игрок ${i + 1}: не знаю форму «${p.kitTitle}»`); });
+    return { url, scope: SC_BY[scTxt] || "game", period: scTxt, first, players, errs };
+  }
+  function openPaste() {
+    modal(`<h3>Заявка из Telegram</h3>
+      <p class="cap">Вставь сообщение клиента целиком, как оно пришло с сайта. Заказ появится в очереди, дальше — «Запустить расчёт» как обычно. Сайт заявки не хранит: это рабочие данные для расчёта, после отправки видео заказ можно убрать.</p>
+      <textarea id="a-paste-t" rows="8" style="width:100%;font:inherit;padding:10px;border-radius:10px" placeholder="Привет! Хочу смены. Заказ №…"></textarea>
+      <p id="a-paste-r" class="cap"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="abtn" id="a-paste-go" disabled>Создать заказ</button><button class="abtn" data-close>Отмена</button></div>`, () => {
+      const ta = $("#a-paste-t"), out = $("#a-paste-r"), go = $("#a-paste-go"); let parsed = null;
+      const show = () => {
+        parsed = parseTgOrder(ta.value);
+        const ok = ta.value.trim() && !parsed.errs.length;
+        out.innerHTML = !ta.value.trim() ? "" : ok
+          ? `Понял: ${parsed.players.map((p) => `№${esc(p.number)} ${esc(p.team)}, форма ${esc(p.kitTitle.toLowerCase())}, обводка ${p.marker === "none" ? "нет" : esc(p.marker)}`).join("; ")}. ${esc(parsed.period || "вся игра")}.`
+          : `<span class="warn">${parsed.errs.map(esc).join("; ")}</span>`;
+        go.disabled = !ok;
+      };
+      ta.addEventListener("input", show); ta.focus();
+      go.addEventListener("click", () => {
+        if (!parsed || parsed.errs.length) return;
+        const n = parsed.players.length, ids = [];
+        parsed.players.forEach((p, i) => {
+          let id = p.id || (i === 0 ? parsed.first : 0) || 0;
+          if (!id || S.get(id) || ids.includes(id)) { id = S.nextId(); while (ids.includes(id)) id = S.nextId(); }
+          ids.push(id);
+        });
+        parsed.players.forEach((p, i) => {
+          S.add({ id: ids[i], created: Date.now(), url: parsed.url, number: +p.number, kit: p.kit, team: p.team, howto: p.howto, scope: parsed.scope,
+            marker: p.marker, msg: ta.value.trim(), period: parsed.period || "вся игра", source: "telegram",
+            ...(n > 1 ? { group: ids[0], groupIds: ids } : {}) });
+        });
+        closeModal(); toast(`Заказ${n > 1 ? "ы" : ""} ${ids.map((x) => "#" + x).join(", ")} создан${n > 1 ? "ы" : ""}`);
+        location.hash = `#/admin/order/${ids[0]}`;
+      });
+    });
+  }
+
   function modal(html, bind) {
     closeModal();
     const m = document.createElement("div"); m.className = "a-modal"; m.id = "a-modal";
@@ -694,6 +752,7 @@
     document.title = `${freshHelp.size ? `(${freshHelp.size}) ` : ""}${B.name}: оператор${isCard ? ` #${parts[1]}` : ""}`;
     $("#a-bell").addEventListener("click", () => { const on = !soundOn(); try { localStorage.setItem(SOUND, on ? "1" : "0"); } catch { /* без хранилища */ } if (on) beep(); render(); });
     $("#a-help").addEventListener("click", () => { const h = $("#a-helpbox"); h.hidden = !h.hidden; });
+    $("#a-paste").addEventListener("click", openPaste);
     $("#a-log")?.addEventListener("click", () => window.GPU.openJournal(() => S.all()));      // журнал системы (assets/gpu.js)
     $("#a-gpu")?.addEventListener("click", async () => {      // ключ видеокарты: ввести, проверить, убрать
       if (window.GPU.key()) { if (confirm("Ключ видеокарты сохранён на этом устройстве. Убрать его?")) { window.GPU.setKey(""); render(); } return; }
