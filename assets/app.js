@@ -89,7 +89,7 @@
   const reelBox = () => `<div class="reel" id="reel"><video src="${O.media.reel}" poster="${O.media.reelPoster}" playsinline preload="none" aria-label="Ролик ${O.media.reelLen} секунд: камера ведёт за игроком №${O.number}, под ним неоновый эллипс"></video><button class="reel-play" type="button" aria-label="Включить ролик"><span>${ICON.play}</span></button></div>`;
 
   const footer = () => `<footer class="foot"><div class="wrap foot-in">
-      <span>${esc(B.name)} ${esc(B.product)}. Смены игрока из трансляции любительского хоккея. Пример на сайте — настоящий заказ, игра автора проекта.</span>
+      <span>${esc(B.name)} ${esc(B.product)}. Смены игрока из трансляции хоккейного матча. Пример на сайте — настоящий заказ, игра автора проекта.</span>
       <span class="foot-links"><a class="link" href="#/privacy">Данные</a><a class="link" href="#/terms">Условия</a><a class="link" href="https://t.me/${B.telegram}" target="_blank" rel="noopener">Telegram</a></span>
     </div></footer>`;
 
@@ -106,13 +106,13 @@
   const SCOPES = [["p1", "1-й период", "1-й"], ["p2", "2-й период", "2-й"], ["p3", "3-й период", "3-й"], ["game", "Вся игра", "Вся игра"]];
   const DRAFT = "scout.order.draft";
   /* черновик формы: ссылка, период, ник и список игроков (до V9 был один игрок полями number/kit/team) */
-  const blankOrder = () => ({ url: "", scope: "game", tg: "", players: [{ number: "", kit: "blue", team: "", howto: "" }] });
+  const blankOrder = () => ({ url: "", scope: "game", tg: "", marker: "none", players: [{ number: "", kit: "blue", team: "", howto: "" }] });
   const loadDraft = () => {
     try {
       const d = JSON.parse(sessionStorage.getItem(DRAFT) || "{}"), b = blankOrder();
       const players = Array.isArray(d.players) && d.players.length ? d.players.slice(0, 5)
         : [{ number: d.number || "", kit: d.kit || "blue", team: d.team || "", howto: d.howto || "" }];
-      return { url: d.url || b.url, scope: d.scope || b.scope, tg: d.tg || b.tg, players: players.map((p) => ({ ...b.players[0], ...p })) };
+      return { url: d.url || b.url, scope: d.scope || b.scope, tg: d.tg || b.tg, marker: d.marker || b.marker, players: players.map((p) => ({ ...b.players[0], ...p })) };
     } catch { return blankOrder(); }
   };
   const saveDraft = () => { try { sessionStorage.setItem(DRAFT, JSON.stringify(state.order)); } catch { /* без хранилища черновик живёт до перезагрузки */ } };
@@ -159,13 +159,12 @@
       <div class="wrap hero-in">
         <div class="hero-text">
           <h1 class="d hero-title" id="hero-t"><span>Каждая смена&nbsp;—</span> <span>отдельным</span> <span>видео</span></h1>
-          <p class="hero-sub">Пришли ссылку на трансляцию любительского матча и номер на спине. На следующий день в Telegram придут все смены игрока, время на льду, голы при нём и ролик 9:16 с неоновой обводкой.</p>
+          <p class="hero-sub">Пришли ссылку на трансляцию матча и номер на спине. На следующий день в Telegram придут все смены игрока, время на льду, голы при нём и ролик 9:16 — с обводкой игрока или без, как выберешь.</p>
           <div class="cta-row"><a class="btn btn--accent btn--big" href="#/order">${ctaText()}</a><a class="link" href="#/result">Смотреть пример целиком</a></div>
           <p class="hero-trust">${esc(heroTrust)}</p>
         </div>
         <figure class="hero-phone">
           <div class="phone">${reelBox()}</div>
-          <figcaption class="slant found"><b class="d">№${O.number} найден</b><span>в ${T.shifts} ${plural(T.shifts, "смене", "сменах", "сменах")} из ${T.shifts}</span></figcaption>
         </figure>
         ${statsRow("он")}
       </div>
@@ -341,11 +340,13 @@
   const onKit = (k) => (["white", "yellow"].includes(k) ? "#000" : "#fff");
   const svcName = (url) => checkUrl(url)?.ok ? checkUrl(url).svc : "";
   const numOk = (n) => /^\d{1,2}$/.test(n) && +n >= 1;
-  const priceOf = (n) => {
-    const one = PRICES[0].price, free = pilot ? Math.min(n, OFFER.freeLeft) : 0;
-    return { total: (n - free) * one, full: n * one, free };
-  };
-  const playersWord = (n) => `${n} ${plural(n, "игрок", "игрока", "игроков")}`;
+  /* обводка игрока в ролике — по желанию: «без обводки» или цвет из window.MARKERS */
+  const HL = [{ key: "none", title: "Без обводки", hex: "" }, ...(window.MARKERS || [])];
+  const hlBy = (k) => HL.find((m) => m.key === k) || HL[0];
+  const hlName = (k) => k === "none" ? "без обводки" : `${hlBy(k).title.toLowerCase()} эллипс`;
+  const hlHtml = () => HL.map((m) => m.key === "none"
+    ? `<button type="button" class="o2-hlb o2-hl-none" data-hl="none" aria-pressed="${state.order.marker === "none"}">Без обводки</button>`
+    : `<button type="button" class="o2-hlb o2-hl-c" data-hl="${m.key}" aria-pressed="${state.order.marker === m.key}" aria-label="${m.title} эллипс" title="${m.title}" style="--c:${m.hex}"></button>`).join("");
   const TICK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>';
 
   function jerseySvg(p, i) {
@@ -364,7 +365,7 @@
   function stageRow() {
     const ps = state.order.players, sel = state.sel;
     const js = ps.map((p, i) => `<button type="button" class="o2-j${i === sel ? " on" : ""}" data-sel="${i}" aria-pressed="${i === sel}" aria-label="Игрок ${i + 1}${p.number ? `, номер ${esc(p.number)}` : ""}">
-        <span class="o2-jtag">Игрок ${i + 1}</span>${jerseySvg(p, i)}<span class="o2-ring" aria-hidden="true"></span></button>`).join("");
+        <span class="o2-jtag">Игрок ${i + 1}</span>${jerseySvg(p, i)}<span class="o2-ring${state.order.marker === "none" ? " hl-none" : ""}" style="--hl:${hlBy(state.order.marker).hex || "transparent"}" aria-hidden="true"></span></button>`).join("");
     const add = ps.length < MAXP ? `<button type="button" class="o2-jadd" data-act="add"><span class="o2-jadd-sw" aria-hidden="true"><svg viewBox="0 0 200 172"><path d="${SW}"/></svg>${ICON.plus}</span><span>Ещё игрок</span></button>` : "";
     return js + add;
   }
@@ -407,7 +408,7 @@
   }
 
   function order() {
-    const o = state.order, n = o.players.length, pr = priceOf(n), svc = svcName(o.url);
+    const o = state.order, n = o.players.length, svc = svcName(o.url);
     if (state.sel >= n) state.sel = 0;
     const scopes = SCOPES.map(([k, t, short]) => `<button type="button" data-scope="${k}" aria-pressed="${o.scope === k}" aria-label="${t}">${short}</button>`).join("");
     return `<div class="wrap o2">
@@ -416,7 +417,7 @@
         <span class="d ghost-n o2-big" id="o2-big" aria-hidden="true">${esc(bigNum())}</span>
         <div class="o2-chips" id="o2-chips">${stageChips()}</div>
         <div class="o2-jrow" id="o2-jrow">${stageRow()}</div>
-        <div class="o2-foot"><h1 class="d o2-title" id="o2-title">${stageTitle()}</h1><p>ИИ ищет игрока по номеру и цвету формы, потом человек пересматривает каждую смену. Под тем, кого нашли, в ролике будет такой же эллипс.</p></div>
+        <div class="o2-foot"><h1 class="d o2-title" id="o2-title">${stageTitle()}</h1><p>ИИ ищет игрока по номеру и цвету формы, потом человек пересматривает каждую смену.</p></div>
       </section>
 
       <form id="order-form" class="o2-panel" novalidate aria-label="Заявка">
@@ -437,6 +438,12 @@
           </div>
 
           <div class="o2-sec">
+            <span class="o2-lbl" id="o2-hl-lbl">Обводка в ролике: <b id="o2-hlname">${hlName(o.marker)}</b></span>
+            <div class="o2-hls" id="o2-hls" role="group" aria-labelledby="o2-hl-lbl">${hlHtml()}</div>
+            <p class="o2-hint">Цветной эллипс под ногами игрока, чтобы его сразу было видно в ролике. Можно без него.</p>
+          </div>
+
+          <div class="o2-sec">
             <div class="o2-tabs" id="o2-tabs" role="tablist" aria-label="Игроки">${tabsHtml()}</div>
             <div class="o2-ed" id="o2-ed" role="tabpanel">${editorHtml()}</div>
           </div>
@@ -452,11 +459,11 @@
         </div>
 
         <div class="o2-pfoot">
-          <div class="o2-total"><div><span class="num" id="t-num"></span><span id="t-cap"></span></div><span class="o2-when">Результат<br><b>завтра в Telegram</b></span></div>
+          <p class="o2-when">Результат <b>завтра в Telegram</b></p>
           <button class="btn btn--accent o2-go" type="submit">Отправить заявку</button>
           <p class="o2-trustline">${orderTrust}</p>
         </div>
-        <div class="o2-bar"><div><span class="num" id="ob-num"></span><span id="ob-cap"></span></div><button class="btn btn--accent" type="submit">Отправить заявку</button></div>
+        <div class="o2-bar"><span class="o2-bar-when">Результат<br><b>завтра в Telegram</b></span><button class="btn btn--accent" type="submit">Отправить заявку</button></div>
       </form>
     </div>`;
   }
@@ -468,28 +475,20 @@
     const lines = ps.length === 1
       ? [`Привет! Хочу смены. Заказ №${ids[0]}`, `Игра: ${o.url}`, `Игрок: ${who(ps[0])}`]
       : [`Привет! Хочу смены для ${ps.length} игроков. Заявка №${ids[0]}`, `Игра: ${o.url}`, ...ps.map((p, i) => `${i + 1}. ${who(p)} (заказ №${ids[i]})`)];
-    return [...lines, `Разобрать: ${sc}`, o.tg ? `Ответить: @${o.tg}` : ""].filter(Boolean).join("\n");
+    return [...lines, `Разобрать: ${sc}`, `Обводка: ${hlName(o.marker || "none")}`, o.tg ? `Ответить: @${o.tg}` : ""].filter(Boolean).join("\n");
   }
 
   function bindOrder() {
     const o = state.order, form = $("#order-form"), url = $("#f-url"), note = $("#url-note"), ed = $("#o2-ed"), tabs = $("#o2-tabs"), row = $("#o2-jrow");
     const setErr = (input, err, bad) => { if (!input) return; input.classList.toggle("bad", bad); input.setAttribute("aria-invalid", String(bad)); const e = $(err); if (e) e.hidden = !bad; };
 
-    const paintTotal = () => {
-      const n = o.players.length, pr = priceOf(n);
-      $("#t-num").innerHTML = `${pr.total} ₽${pr.full !== pr.total ? `<s>${pr.full} ₽</s>` : ""}`;
-      $("#t-cap").textContent = pr.total ? (pr.free ? `${playersWord(n)}, ${pr.free} бесплатно по пилоту` : `${playersWord(n)}, оплата после результата`)
-        : `${playersWord(n)}, бесплатно по пилоту`;
-      $("#ob-num").innerHTML = `${pr.total} ₽${pr.full !== pr.total ? `<s>${pr.full} ₽</s>` : ""}`;
-      $("#ob-cap").textContent = pr.total ? `${playersWord(n)}, после результата` : `${playersWord(n)}, бесплатно`;
-    };
     /* всё, что зависит от игроков, кроме полей редактора (их не трогаем, пока человек в них пишет) */
     const paint = () => {
       row.innerHTML = stageRow();
       $("#o2-title").innerHTML = stageTitle();
       $("#o2-big").textContent = bigNum();
       tabs.innerHTML = tabsHtml();
-      paintTotal(); saveDraft();
+      saveDraft();
     };
     const paintEditor = (focus) => { ed.innerHTML = editorHtml(); if (focus) $(focus, ed)?.focus({ preventScroll: true }); };
     const select = (i, focus) => { state.sel = i; paint(); paintEditor(focus); };
@@ -516,6 +515,13 @@
     $("#o2-paste").addEventListener("click", async () => {
       try { const t = (await navigator.clipboard.readText()).trim(); if (t) { url.value = t; o.url = t; paintUrl(); (checkUrl(t)?.ok ? $("#o2-num") : url)?.focus(); } }
       catch { url.focus(); toast("Вставь ссылку вручную: долгое нажатие в поле"); }
+    });
+    $("#o2-hls").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-hl]"); if (!b) return;
+      o.marker = b.dataset.hl;
+      $$("button", $("#o2-hls")).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      $("#o2-hlname").textContent = hlName(o.marker);
+      paint();
     });
     $("#scopes").addEventListener("click", (e) => { const b = e.target.closest("[data-scope]"); if (!b) return; o.scope = b.dataset.scope; $$("button", $("#scopes")).forEach((x) => x.setAttribute("aria-pressed", String(x === b))); $("#o2-chips").innerHTML = stageChips(); saveDraft(); });
 
@@ -582,7 +588,7 @@
       if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); return; }
       openConfirm();
     });
-    paintUrl(); paintTotal();
+    paintUrl();
   }
 
   /* перед отправкой: готовое сообщение, которое уйдёт автору. Отправляет его сам человек.
@@ -595,17 +601,17 @@
       else while (ids.includes(id)) id = S.nextId();
       ids.push(id);
     }
-    const msg = orderMessage(o, ids), pr = priceOf(n);
+    const msg = orderMessage(o, ids);
     openModal(`<div class="confirm">
       <div class="confirm-head"><h2 id="confirm-title">Проверь заявку</h2><button class="icon-btn" type="button" data-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <p class="cap">Нажми кнопку: откроется Telegram с этим текстом. Там нажми «Отправить». ${pr.total ? `К оплате после результата: ${pr.total} ₽.` : "Платить ничего не нужно."}</p>
+      <p class="cap">Нажми кнопку: откроется Telegram с этим текстом. Там нажми «Отправить».</p>
       <pre class="msg">${esc(msg)}</pre>
       <div class="confirm-actions"><a class="btn btn--accent" id="send-order" href="${tgLink(msg)}" target="_blank" rel="noopener">${ICON.tg}Отправить в Telegram</a><button class="btn btn--ghost" data-close>Исправить</button></div>
       <p class="cap">Заявку получит Сергей, автор сервиса (@${esc(B.telegram)}). Видео нигде не публикуется.</p></div>`);
     $("#send-order").addEventListener("click", () => {
       const sc = SCOPES.find((s) => s[0] === o.scope);
       o.players.forEach((p, i) => {
-        S.add({ id: ids[i], created: Date.now(), url: o.url, number: +p.number, kit: p.kit, team: p.team, howto: p.howto, scope: o.scope, tg: o.tg, msg,
+        S.add({ id: ids[i], created: Date.now(), url: o.url, number: +p.number, kit: p.kit, team: p.team, howto: p.howto, scope: o.scope, tg: o.tg, marker: o.marker || "none", msg,
           period: sc[1], real: o.url.includes(O.youtube) ? "game" : "", ...(n > 1 ? { group: ids[0], groupIds: ids } : {}) });
       });
       // расчёт на видеокарте заявка не запускает: его запускает владелец кнопкой в админке (assets/gpu.js)
@@ -751,7 +757,7 @@
     document.title = `${B.name}: вход для оператора`;
     view.className = "";
     view.innerHTML = `<div class="wrap gate"><form class="gate-card" id="gate-form" novalidate>
-      <svg class="gate-mark" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="11" r="6.5"/><ellipse cx="20" cy="28" rx="16" ry="6.5"/></svg>
+      <svg class="logo-mark gate-mark" viewBox="0 0 64 56" aria-hidden="true"><path class="lm-body" d="M4 18v16c0 7.7 12.5 14 28 14s28-6.3 28-14V18"/><ellipse class="lm-top" cx="32" cy="18" rx="28" ry="14"/><path class="lm-play" d="M25 10.5 L43 18 L25 25.5 Z"/></svg>
       <h1 class="d3">Вход для оператора</h1>
       <label for="gate-pin">Код</label>
       <input class="input gate-pin" id="gate-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" enterkeyhint="go" aria-describedby="gate-err">
@@ -770,7 +776,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261121a";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261121b";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша

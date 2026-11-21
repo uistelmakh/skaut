@@ -107,9 +107,11 @@ main { display: block; min-height: 80vh; outline: none; padding-bottom: var(--do
 .top { position: sticky; top: 0; z-index: 30; background: rgba(8, 16, 31, .94); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line-2); }
 .top-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 60px; }
 .logo { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font: italic 900 24px/1 var(--display); text-transform: uppercase; white-space: nowrap; }
-.logo-mark { width: 26px; height: 26px; flex: none; }
-.logo-mark circle { fill: #fff; }
-.logo-mark ellipse { fill: none; stroke: var(--mark); stroke-width: 3; }
+/* знак: шайба сбоку, на ней кнопка «смотреть» (макет — артборд «Логотип» в Claude Design) */
+.logo-mark { width: 32px; height: 28px; flex: none; }
+.lm-body { fill: #fff; }
+.lm-top { fill: #C9D3E6; }
+.lm-play { fill: var(--blue); }
 .top-nav { display: none; }
 .top-cta .cta-tail { display: none; }
 body[data-route="order"] .top-cta { visibility: hidden; }
@@ -155,9 +157,6 @@ body[data-route="order"] .dock { display: none; }
 .reel-play svg { width: 24px; height: 24px; fill: var(--ink); margin-left: 4px; }
 .reel-play:focus-visible { outline-offset: -8px; }
 .reel.playing .reel-play { opacity: 0; pointer-events: none; }
-.found { position: absolute; left: -36px; bottom: 60px; display: grid; padding: 8px 16px 8px 12px; background: var(--mark); color: var(--ink); }
-.found b { font-size: 22px; line-height: 1; }
-.found span { font-size: 12px; font-weight: 600; }
 
 /* цифры периода как графика трансляции */
 .stats { grid-area: stats; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); }
@@ -364,7 +363,8 @@ body[data-route="order"] .dock { display: none; }
 .o2-plate { font: italic 800 15px var(--display); letter-spacing: 1px; }
 .o2-no { font: italic 900 80px var(--display); }
 .o2-ring { width: 112%; height: 0; padding-bottom: 20%; margin-top: -11%; border-radius: 50%; background: rgba(255, 255, 255, .06); transition: background .2s, box-shadow .2s; }
-.o2-j.on .o2-ring { background: rgba(61, 255, 46, .12); box-shadow: 0 0 0 4px var(--mark), 0 0 28px rgba(61, 255, 46, .35); }
+.o2-j.on .o2-ring { background: color-mix(in srgb, var(--hl) 14%, transparent); box-shadow: 0 0 0 4px var(--hl), 0 0 28px color-mix(in srgb, var(--hl) 35%, transparent); }
+.o2-j.on .o2-ring.hl-none { background: rgba(255, 255, 255, .08); box-shadow: 0 0 0 2px rgba(255, 255, 255, .28); }   /* без обводки: только тень выбранного */
 .o2-jadd { flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 76px; margin-bottom: 18px; color: var(--mute); font-size: 13px; font-weight: 600; }
 .o2-jadd:hover { color: #fff; }
 .o2-jadd-sw { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 200 / 172; }
@@ -440,22 +440,14 @@ body[data-route="order"] .dock { display: none; }
 .o2-trustline { font-size: 13px; line-height: 1.5; color: var(--ink); }
 .o2-legal { font-size: 13px; line-height: 1.5; color: var(--ink-2); }
 .o2-pfoot { display: none; gap: 14px; padding: 0 18px 24px; }
-.o2-total, .o2-go { display: none; }
-.o2-total > div { display: grid; gap: 6px; }
-.o2-total .num { display: flex; align-items: baseline; gap: 12px; font: italic 900 64px/.85 var(--display); text-transform: uppercase; }
-.o2-total .num s { font: italic 900 32px/1 var(--display); color: #8A94A8; }
-.o2-total > div > span:last-child { font-size: 13px; color: var(--ink-2); }
-.o2-when { font-size: 13px; line-height: 1.4; color: var(--ink-2); text-align: right; }
+.o2-go { display: none; }
+.o2-when { display: none; font-size: 14px; line-height: 1.4; color: var(--ink-2); }
 .o2-when b { font-size: 15px; color: var(--ink); }
 .o2-go { width: 100%; min-height: 60px; font-size: 17px; }
 .o2-go::before { clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
 .o2-trust-m { margin-top: 2px; }
 /* полоса с ценой на телефоне: прибита к низу, тёмная, как нижнее меню */
 .o2-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) 16px; background: rgba(8, 16, 31, .97); color: #fff; border-top: 1px solid var(--line); --focus: var(--blue-hi); }
-.o2-bar > div { display: grid; gap: 3px; min-width: 0; }
-.o2-bar .num { display: flex; align-items: baseline; gap: 8px; font: italic 900 36px/.85 var(--display); }
-.o2-bar .num s { font: 600 13px var(--text); color: var(--mute-2); }
-.o2-bar > div > span:last-child { font-size: 13px; color: var(--mute); white-space: nowrap; }
 .o2-bar .btn { min-height: 52px; padding: 0 22px; font-size: 16px; }
 
 /* ================= Шторка с видео смены и окно подтверждения ================= */
@@ -563,8 +555,7 @@ body[data-route="order"] .dock { display: none; }
 .gate-card h1 { margin-bottom: 8px; }
 .gate-card label { font-weight: 600; }
 .gate-card .link { justify-self: center; margin-top: 4px; }
-.gate-mark { width: 40px; height: 40px; fill: none; stroke: #fff; stroke-width: 3; }
-.gate-mark ellipse { stroke: var(--mark); }
+.gate-mark { width: 46px; height: 40px; }
 .input { width: 100%; height: 56px; padding: 0 16px; border: 1.5px solid var(--line); border-radius: 0; background: var(--night); color: #fff; font: 500 17px var(--text); outline: none; transition: border-color .15s, box-shadow .15s; }
 .input:focus { border-color: #fff; box-shadow: 0 0 0 3px rgba(191, 208, 255, .35); }
 .input.bad { border-color: var(--bad-dk); }
@@ -608,7 +599,7 @@ body[data-route="order"] .dock { display: none; }
 
   .top-in { height: 76px; gap: 40px; }
   .logo { font-size: 28px; gap: 10px; }
-  .logo-mark { width: 30px; height: 30px; }
+  .logo-mark { width: 38px; height: 33px; }
   .top-nav { display: flex; gap: 28px; font-size: 15px; font-weight: 500; }
   .top-nav a { padding: 12px 0; color: var(--mute); border-bottom: 2px solid transparent; }
   .top-nav a:hover, .top-nav a.on { color: #fff; }
@@ -636,9 +627,7 @@ body[data-route="order"] .dock { display: none; }
   .hero-phone { justify-self: end; }
   .phone { width: 300px; padding: 8px; border-radius: 34px; }
   .phone > img, .phone .reel { border-radius: 27px; }
-  .found { left: -48px; bottom: 64px; padding: 10px 18px 10px 14px; }
-  .found b { font-size: 26px; }
-  .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .stats li, .stats li:nth-child(n) { padding: 26px 24px 30px; border-bottom: 0; border-right: 1px solid var(--line); }
   .stats li:first-child { padding-left: 0; }
   .stats li:last-child { padding-right: 0; border-right: 0; }
@@ -725,7 +714,7 @@ body[data-route="order"] .dock { display: none; }
   .o2-big { font-size: 420px; right: -20px; bottom: -70px; }
   .o2-pbody { gap: 24px; }
   .o2-pfoot { position: sticky; bottom: 0; z-index: 2; display: grid; margin: 0 28px; padding: 20px 0 28px; background: #fff; border-top: 1.5px solid var(--ink); }
-  .o2-total { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .o2-when { display: block; }
   .o2-go { display: inline-flex; }
   .o2-bar, .o2-trust-m { display: none; }
 }
@@ -734,3 +723,14 @@ body[data-route="order"] .dock { display: none; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
   html { scroll-behavior: auto; }
 }
+
+/* ===== Заказ: обводка в ролике по желанию (V15) ===== */
+.o2-hls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.o2-hlb { height: 44px; border: 1.5px solid var(--line-light); background: #fff; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.o2-hl-none { padding: 0 14px; font: 600 14px var(--text); color: var(--ink); }
+.o2-hl-c { width: 44px; position: relative; }
+.o2-hl-c::after { content: ""; position: absolute; left: 7px; right: 7px; top: 15px; height: 12px; border-radius: 50%; border: 3px solid var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.o2-hl-c { background: var(--ink); border-color: var(--ink); }
+.o2-hlb[aria-pressed="true"] { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue); }
+.o2-bar-when { font-size: 13px; line-height: 1.3; color: var(--mute); }
+.o2-bar-when b { color: #fff; font-weight: 600; }
