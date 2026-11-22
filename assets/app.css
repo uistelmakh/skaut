@@ -286,10 +286,6 @@ body[data-route="order"] .dock { display: none; }
 .cta-phone { display: none; }
 
 /* подвал */
-.foot { padding: 32px 0; background: var(--night); border-top: 1px solid var(--line-2); }
-.foot-in { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; font-size: 14px; color: var(--mute-2); }
-.foot-links { display: flex; flex-wrap: wrap; gap: 8px 24px; }
-.foot-links a { color: var(--mute); }
 
 /* ================= Результат ================= */
 .r-hero-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "id jersey" "stats stats"; align-items: end; gap: 24px 16px; padding-top: 32px; padding-bottom: 32px; }
@@ -669,8 +665,6 @@ body[data-route="order"] .dock { display: none; }
   .cta-text .cta-row { margin-top: 32px; }
   .cta-phone { display: block; width: 260px; padding: 7px; border-radius: 30px; background: var(--night); box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .55); }
   .cta-phone > img { border-radius: 24px; }
-
-  .foot { padding: 36px 0; }
 
   .r-hero-in { grid-template-columns: minmax(0, 1fr) auto; gap: 40px 48px; padding-top: 72px; padding-bottom: 0; }
   .r-done { font-size: 14px; }

@@ -88,10 +88,6 @@
   /* ролик 9:16 в рамке телефона; кнопка включает его со звуком */
   const reelBox = () => `<div class="reel" id="reel"><video src="${O.media.reel}" poster="${O.media.reelPoster}" playsinline preload="none" aria-label="Ролик ${O.media.reelLen} секунд: камера ведёт за игроком №${O.number}, под ним неоновый эллипс"></video><button class="reel-play" type="button" aria-label="Включить ролик"><span>${ICON.play}</span></button></div>`;
 
-  const footer = () => `<footer class="foot"><div class="wrap foot-in">
-      <span>${esc(B.name)} ${esc(B.product)}. Смены игрока из трансляции хоккейного матча. Пример на сайте — настоящий заказ, игра автора проекта.</span>
-      <span class="foot-links"><a class="link" href="#/privacy">Данные</a><a class="link" href="#/terms">Условия</a><a class="link" href="https://t.me/${B.telegram}" target="_blank" rel="noopener">Telegram</a></span>
-    </div></footer>`;
 
   function selectShift(n, root = view, show) {
     $$(".tl-bar", root).forEach((b) => b.classList.toggle("on", +b.dataset.shift === n));
@@ -244,7 +240,6 @@
         <div class="phone cta-phone"><img src="${O.media.reelPoster}" alt="Кадр ролика 9:16: игрок №${O.number} с неоновой обводкой" loading="lazy"></div>
       </div>
     </section>
-    ${footer()}
     </div>`;
   }
 
@@ -313,7 +308,6 @@
           <div class="phone cta-phone"><img src="${O.media.reelPoster}" alt="Кадр ролика 9:16: игрок №${O.number} с неоновой обводкой" loading="lazy"></div>
         </div>
       </section>`}
-      ${footer()}
     </div>`;
   }
 
@@ -803,7 +797,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261121g";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261122a";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
