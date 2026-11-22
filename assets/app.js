@@ -239,12 +239,12 @@
         </div>
 
         <div class="season-wrap" id="season">
-          <h3 class="u sub-t">Своя статистика за сезон</h3>
-          <p class="per-lead">Каждая присланная игра добавляется в твою историю. Видно, сколько ты на самом деле играешь и как это меняется от игры к игре.</p>
+          <h3 class="u sub-t">Сезон — в твоём Telegram</h3>
+          <p class="per-lead">Каждую игру присылаем в один и тот же чат. Вся история сезона остаётся у тебя: видно, сколько ты на самом деле играешь и как меняются цифры от игры к игре. На сайте мы ничего не храним.</p>
           <ul class="season">
             <li><h4>Смены</h4><p>Сколько раз выходил на лёд: за период, за игру, за сезон.</p></li>
             <li><h4>Минуты на льду</h4><p>Точное время и средняя смена. Видно, больше тебе дают играть или меньше.</p></li>
-            <li><h4>Игры</h4><p>Все сыгранные матчи в одном списке, у каждой смены своё видео.</p></li>
+            <li><h4>Игры</h4><p>Все сыгранные матчи в одной переписке, у каждой смены своё видео.</p></li>
             <li><h4>Голы при тебе</h4><p>Плюс и минус: сколько забили и пропустили, пока ты был на льду.</p></li>
           </ul>
           <p class="note">Одна игра из примера: ${shifts}, ${T.toi} на льду, +${T.plus} −${T.minus}. С каждой новой игрой цифры складываются в сезон.</p>
@@ -321,8 +321,7 @@
           <p>${PRICES[1].games} игр за ${rub(PRICES[1].price)} ₽, это ${PRICES[1].per} ₽ за игру. Платишь после результата, пакет действует ${OFFER.packMonths} месяцев.</p>
           <div class="actions"><a class="btn btn--accent" href="#/order">Прислать следующую игру</a><button class="btn btn--line" type="button" data-share>${ICON.share}Скинуть в чат команды</button></div></div>
       </div></section>` : `${line("goal")}${endBand("want", `Это смены №${O.number}. Хочешь так же про себя?`,
-        `<p class="siren-lead">Пришли ссылку на трансляцию своей игры и номер. Как всё будет готово, пришлём в Telegram все твои смены, время на льду и ролик. Игра стоит ${PRICES[0].price} ₽, платишь после результата. Не нашли тебя в записи — не платишь.</p>
-        <a class="more siren-how" href="#/" data-jump="how">Как это работает</a>`)}`}
+        `<p class="siren-lead">Пришли ссылку на трансляцию своей игры и номер. Как всё будет готово, пришлём в Telegram все твои смены, время на льду и ролик. Игра стоит ${PRICES[0].price} ₽, платишь после результата. Не нашли тебя в записи — не платишь.</p>`)}`}
     </div>`;
   }
 
@@ -788,7 +787,7 @@
     document.title = `${B.name}: вход для оператора`;
     view.className = "";
     view.innerHTML = `<div class="wrap gate"><form class="gate-card" id="gate-form" novalidate>
-      <svg class="logo-mark gate-mark" viewBox="0 0 76 40" aria-hidden="true"><rect class="lm-line" x="0" y="19" width="76" height="2.5"/><path class="lm-stint" d="M26 6 H58 L50 34 H18 Z"/></svg>
+      <svg class="logo-mark gate-mark" viewBox="0 0 104 40" aria-hidden="true"><rect class="lm-line" x="0" y="19" width="104" height="2.5"/><rect class="lm-line" x="34" y="12" width="2.5" height="16"/><rect class="lm-line" x="69" y="12" width="2.5" height="16"/><path class="lm-stint" d="M44 6 H70 L63 34 H37 Z"/></svg>
       <h1 class="d3">Вход для оператора</h1>
       <label for="gate-pin">Код</label>
       <input class="input gate-pin" id="gate-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" enterkeyhint="go" aria-describedby="gate-err">
@@ -807,7 +806,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261122d";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261122e";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша

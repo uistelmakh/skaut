@@ -26,7 +26,7 @@ body[data-app="admin"] :focus-visible { outline: 2px solid var(--a-acc2); outlin
   border-bottom: 1px solid var(--a-line);
 }
 .adm-logo { display: flex; align-items: center; gap: 8px; }
-.adm-logo svg { width: 34px; height: 18px; color: var(--a-ink); }
+.adm-logo svg { width: 44px; height: 17px; color: var(--a-ink); }
 .adm-logo b { font: 800 19px/1 var(--head); text-transform: lowercase; letter-spacing: -.02em; }   /* слово строчными, Unbounded 800, как в шапке сайта */
 .adm-logo span { color: var(--a-ink3); font-size: 13px; }
 .adm-back { display: inline-flex; align-items: center; gap: 4px; color: var(--a-ink2); padding: 6px 8px 6px 4px; border-radius: 8px; }

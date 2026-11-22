@@ -123,7 +123,7 @@
   function chrome(inner, crumb) {
     return `<div class="adm">
       <header class="adm-top">
-        <a class="adm-logo" href="#/admin"><svg viewBox="0 0 76 40" aria-hidden="true"><rect x="0" y="19" width="76" height="2.5" fill="currentColor" opacity=".45"/><path d="M26 6 H58 L50 34 H18 Z" fill="#2B66F6"/></svg><b>${esc(B.name)}</b><span>оператор</span></a>
+        <a class="adm-logo" href="#/admin"><svg viewBox="0 0 104 40" aria-hidden="true"><g fill="currentColor" opacity=".45"><rect x="0" y="19" width="104" height="2.5"/><rect x="34" y="12" width="2.5" height="16"/><rect x="69" y="12" width="2.5" height="16"/></g><path d="M44 6 H70 L63 34 H37 Z" fill="#3B6BFF"/></svg><b>${esc(B.name)}</b><span>оператор</span></a>
         ${crumb || ""}
         ${S.cloud ? "" : `<span class="adm-demo">демо-данные</span>`}
         <label class="adm-search">${icon.search}<input id="a-q" placeholder="Заказ, клиент, лига" value="${esc(ctx.q)}" autocomplete="off">${kbd("/")}</label>

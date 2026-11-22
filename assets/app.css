@@ -131,10 +131,14 @@ main { display: block; min-height: 80vh; outline: none; }
 .top { position: sticky; top: 0; z-index: 30; background: rgba(238, 243, 247, .88); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--hair); }
 .top-in { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; }
 .logo { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; color: var(--ink); white-space: nowrap; }
-.logo-mark { width: 36px; height: 19px; flex: none; }
+.logo-mark { width: 46px; height: 18px; flex: none; }   /* v2: линия периода с засечками трёх периодов + смена */
 .lm-line { fill: var(--ink); fill-opacity: .35; }
 .lm-stint { fill: var(--blue); }
 .logo-word { font: 800 19px/1 var(--head); letter-spacing: -.02em; }
+/* точка над «i» — синяя плашка-смена (знак и слово говорят одно); буква без точки — U+0131 */
+.lw-i { position: relative; display: inline-block; }
+.lw-i b { position: absolute; left: 50%; top: -.06em; width: .36em; height: .2em; margin-left: -.2em; background: var(--blue); clip-path: polygon(28% 0, 100% 0, 72% 100%, 0 100%); }
+.logo--light .lw-i b { background: #3B6BFF; }
 .logo--light { color: #fff; }
 .logo--light .lm-line { fill: #fff; fill-opacity: .45; }
 .top-nav { display: none; }
@@ -355,7 +359,6 @@ body[data-route="order"] .dock { display: none; }
 .siren-lead { max-width: 620px; margin-top: 18px; font-size: 17px; line-height: 1.5; color: var(--on-night-2); }
 .siren .cta-row { justify-content: center; margin-top: 30px; }
 .siren .link, .siren .more { color: var(--blue-on-dark); }
-.siren-how { order: 5; margin-top: 10px; }
 
 /* ================= Результат ================= */
 .r-hero { padding: 32px 0 36px; }
@@ -632,7 +635,7 @@ body[data-route="order"] .dock { display: none; }
 .gate-card h1 { margin-bottom: 8px; }
 .gate-card label { font-size: 15px; font-weight: 700; }
 .gate-card .link { justify-self: center; margin-top: 4px; }
-.gate-mark { width: 60px; height: 32px; }
+.gate-mark { width: 78px; height: 30px; }
 .input { width: 100%; height: 56px; padding: 0 16px; border: 1.5px solid var(--line-2); border-radius: 12px; background: #fff; color: var(--ink); font: 400 17px var(--text); outline: none; transition: border-color .15s, box-shadow .15s; }
 .input:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(29, 78, 216, .18); }
 .input.bad { border-color: var(--bad); }
@@ -677,7 +680,7 @@ body[data-route="order"] .dock { display: none; }
   :root { --gut: 32px; --dock-h: 0px; }
   .dock { display: none; }
   .toast { bottom: 32px; }
-  .logo-mark { width: 40px; height: 21px; }
+  .logo-mark { width: 52px; height: 20px; }
   .logo-word { font-size: 20px; }
 
   .d3 { font-size: 24px; }
@@ -755,12 +758,12 @@ body[data-route="order"] .dock { display: none; }
   .r-stats .sb { margin-top: 36px; }
   .band { padding: 72px 0; }
   .tile { padding: 32px; }
-  .r-grid { grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+  .r-grid { grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: stretch; }   /* шкала и ролик одной высоты: без пустоты под шкалой */
   .r-side { position: sticky; top: 88px; justify-items: start; }
   .r-side .phone { justify-self: center; width: 240px; padding: 8px; border-radius: 38px; }
   .r-side .phone .reel { border-radius: 30px; }
-  .picked { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: end; gap: 24px; }
-  .picked-info { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .picked { gap: 18px; }   /* кадр выбранной смены во всю ширину: блок шкалы одной высоты с роликом, без пустоты */
+  .picked-info { align-items: flex-end; }
   .picked-info h3 { font-size: 26px; }
   .picked-sec { font-size: 60px; }
 
