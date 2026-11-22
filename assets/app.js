@@ -34,33 +34,44 @@
   };
 
   const jersey = (n, draw) => `<span class="jersey${draw ? " draw" : ""}"><b>${esc(n)}</b><svg viewBox="0 0 150 50" aria-hidden="true"><ellipse cx="75" cy="25" rx="70" ry="20" pathLength="100"/></svg></span>`;
-  /* гол при игроке: забили — красная плашка, пропустили — тёмная с красным текстом */
+  /* гол при игроке: забили — красная плашка, пропустили — бледно-красная с тёмно-красным текстом */
   const goalTag = (g) => g ? `<span class="tag ${g.mine ? "tag--plus" : "tag--minus"}">${g.mine ? "гол" : "пропустили"} ${esc(g.score)}</span>` : "";
   const goalOfShift = (n) => O.goals.find((g) => g.shift === n);
-  const PERIOD_GEN = { 1: "первого", 2: "второго", 3: "третьего" };
 
-  /* ---------- цифры периода: крупные цифры через тонкие линии, как графика трансляции ---------- */
-  function statsRow(who) {
-    return `<ul class="stats" aria-label="Цифры периода">
-      <li><b class="d">${T.toi}</b><span>на льду за период</span></li>
-      <li><b class="d">${T.shifts}</b><span>${plural(T.shifts, "смена", "смены", "смен")}, каждая отдельным видео</span></li>
-      <li><b class="d">${T.avgSec}<small>с</small></b><span>средняя смена</span></li>
-      <li><b class="d">+${T.plus} <em>−${T.minus}</em></b><span>голы, пока ${who} на льду</span></li>
-    </ul>`;
+  /* ---------- табло ----------
+     LED-цифры: каждая цифра — лента 0–9 дважды; в покое стоит на настоящем значении,
+     при первом показе табло «прокручивается» к нему (класс .is-in, см. motion). Диктор читает текст из .vh */
+  const led = (v) => `<span class="lv" aria-hidden="true">${[...String(v)].map((ch, k) => /\d/.test(ch)
+    ? `<span class="odo"><span class="odo-s" style="--d:${ch};--k:${k}">${"0123456789".repeat(2).split("").join("\n")}</span></span>`
+    : `<span class="odo-c">${esc(ch)}</span>`).join("")}</span><span class="vh">${esc(v)}</span>`;
+  const board = (s) => (/^\d:\d\d$/.test(s) ? "0" + s : s);   // 8:48 → 08:48, как на табло арены
+
+  function scoreboard(who) {
+    const cell = (label, value) => `<li class="sb-c"><span class="sb-l">${label}</span><b class="led sb-v">${value}</b></li>`;
+    return `<div class="sb" data-roll>
+      <div class="sb-top"><span class="sb-team">${esc(O.team)}</span><b class="led sb-score">${led(O.scoreEnd)}</b><span class="sb-team">${esc(O.opp)}</span>
+        <span class="sb-meta">№${O.number} · ${O.period}-й период · ${esc(O.date)}</span></div>
+      <ul class="sb-grid" aria-label="Цифры периода">
+        ${cell("На льду", led(board(T.toi)))}
+        ${cell("Смены", led(T.shifts))}
+        ${cell("Средняя", led(mmss(T.avgSec)))}
+        ${cell(`Голы при ${who}`, `${led("+" + T.plus)} <span class="sb-minus">${led("−" + T.minus)}</span>`)}
+      </ul>
+    </div>`;
   }
 
-  /* ---------- лента смен: кадр, плашка «Смена N», гол, время по табло и секунды ---------- */
+  /* ---------- лента смен: кадр, время на льду на табло-плашке, гол обведён красным ---------- */
   function shiftCards() {
     return O.shifts.map((s) => {
       const g = goalOfShift(s.n);
-      return `<button class="card" type="button" data-play="${s.n}" data-row="${s.n}" aria-label="Смотреть смену ${s.n}: ${s.c0} – ${s.c1} по табло, ${s.sec} секунд на льду${g ? `, ${g.mine ? "гол" : "пропустили"} ${esc(g.score)}` : ""}">
-        <span class="card-frame"><img src="${O.media.frame(s.n)}" alt="" decoding="async"><span class="slant card-n">Смена ${s.n}</span>${goalTag(g)}<span class="card-play" aria-hidden="true">${ICON.play}</span></span>
-        <span class="card-foot"><span><small>по табло</small><b>${s.c0} – ${s.c1}</b></span><span class="d card-sec">${s.sec}<small>с</small></span></span>
+      return `<button class="card${g ? (g.mine ? " card--goal" : " card--miss") : ""}" type="button" data-play="${s.n}" data-row="${s.n}" aria-label="Смотреть смену ${s.n}: ${s.c0} – ${s.c1} по табло, ${s.sec} секунд на льду${g ? `, ${g.mine ? "гол" : "пропустили"} ${esc(g.score)}` : ""}">
+        <span class="card-frame"><img src="${O.media.frame(s.n)}" alt="" loading="lazy" decoding="async"><span class="led card-sec">${mmss(s.sec)}</span><span class="card-play" aria-hidden="true">${ICON.play}</span></span>
+        <span class="card-foot"><b>Смена ${s.n}${g ? ` · <em>${g.mine ? "гол" : "пропустили"} ${esc(g.score)}</em>` : ""}</b><span>${s.c0} – ${s.c1}</span></span>
       </button>`;
     }).join("");
   }
 
-  /* ---------- шкала периода: синие полосы — игрок на льду, черты — голы ---------- */
+  /* ---------- шкала периода: синие полосы — игрок на льду, красные черты — голы ---------- */
   function timeline(selected, { anim = false, who = "нём" } = {}) {
     let prev = -1;
     const goals = O.goals.map((g) => {
@@ -81,8 +92,8 @@
 
   function pickedCard(n) {
     const s = shiftBy(n), g = goalOfShift(n);
-    return `<button class="thumb" type="button" data-play="${n}"><img src="${O.media.frame(n)}" alt=""><span class="slant thumb-play">${ICON.play}Смотреть<span class="vh"> смену ${n}</span></span><span class="len">${mmss(s.len)}</span></button>
-      <div class="picked-info"><div><h3 class="d">Смена ${n}</h3><p>${s.c0} – ${s.c1} по табло ${goalTag(g)}</p></div><span class="d picked-sec">${s.sec}<small>с</small></span></div>`;
+    return `<button class="thumb" type="button" data-play="${n}"><img src="${O.media.frame(n)}" alt=""><span class="thumb-play">${ICON.play}Смотреть<span class="vh"> смену ${n}</span></span><span class="len">${mmss(s.len)}</span></button>
+      <div class="picked-info"><div><h3 class="u">Смена ${n}</h3><p>${s.c0} – ${s.c1} по табло ${goalTag(g)}</p></div><span class="u picked-sec">${s.sec}<small>с</small></span></div>`;
   }
 
   /* ролик 9:16 в рамке телефона; кнопка включает его со звуком */
@@ -93,7 +104,7 @@
     $$(".tl-bar", root).forEach((b) => b.classList.toggle("on", +b.dataset.shift === n));
     $$("[data-row]", root).forEach((b) => b.classList.toggle("on", +b.dataset.row === n));
     const p = $("#picked", root);
-    if (p) { p.innerHTML = pickedCard(n); p.animate?.([{ opacity: .4, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" }); }
+    if (p) { p.innerHTML = pickedCard(n); if (!reduced) p.animate?.([{ opacity: .4, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "cubic-bezier(.2,.8,.2,1)" }); }
     state.shift = n;
     if (show && p) { const r = p.getBoundingClientRect(); if (r.bottom > innerHeight - 90 || r.top < 70) p.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); }
   }
@@ -113,28 +124,40 @@
   };
   const saveDraft = () => { try { sessionStorage.setItem(DRAFT, JSON.stringify(state.order)); } catch { /* без хранилища черновик живёт до перезагрузки */ } };
   const state = { shift: 2, order: loadDraft(), sel: 0 };
-  const pilot = OFFER.freeLeft > 0;
-  const seats = () => `Осталось ${OFFER.freeLeft} ${plural(OFFER.freeLeft, "бесплатное место", "бесплатных места", "бесплатных мест")} из ${OFFER.freeTotal}`;
-  const ctaText = () => pilot ? "Получить смены бесплатно" : `Получить смены за ${PRICES[0].price} ₽`;
+  const CTA = "Получить смены";                 // без цены в кнопке: цены — в 3-м периоде
   const tgLink = (text) => `https://t.me/${B.telegram}?text=${encodeURIComponent(text)}`;
   const TEAM_MSG = "Привет! Хочу смены для всей команды.\nКоманда: \nИгроков: \nСсылка на игру: ";
-
-  /* одна фраза о риске и пилоте: говорится там, где человек решает (у кнопки и у цены) */
-  const freeLine = () => pilot ? `Первая игра сейчас бесплатно: осталось ${OFFER.freeLeft} ${plural(OFFER.freeLeft, "место", "места", "мест")} из ${OFFER.freeTotal}, взамен три коротких вопроса после результата.` : "";
+  /* одна фраза о риске: говорится там, где человек решает (у кнопки и у цены) */
+  const TRUST = "Платишь после того, как увидел свои смены. Не нашли в записи — не платишь.";
   const orderTrust = "Платишь после того, как увидел смены. Не нашли игрока в записи: ничего не платишь.";
 
   /* ================= ЛЕНДИНГ =================
-     Направление «Арена» (docs/design/DESIGN.md): кадр трансляции во весь экран, огромные наклонные заголовки,
-     цифры как графика эфира. Все цифры — из настоящего заказа (window.ORDER), цены — из config.js.
-     Единственное движение — шкала периода прорисовывается, когда попадает на экран. */
+     Концепция «Каток» (docs/design/DESIGN.md): страница — матч на льду, читается сверху вниз как игра.
+     Центр льда (герой) → 1-й период (что приходит) → 2-й (почему и как) → 3-й (цены) → овертайм (вопросы) → сирена.
+     Разметка катка — структура: красная центральная и синие линии делят секции. Цифры — из window.ORDER, цены — из config.js. */
+  const line = (kind) => `<div class="line line--${kind}" aria-hidden="true"></div>`;
+  const perHead = (label, id, title, lead = "") => `<header class="per-head"><span class="per-l">${label}</span><h2 class="u per-t" id="${id}">${title}</h2>${lead ? `<p class="per-lead">${lead}</p>` : ""}</header>`;
+  const faceoff = (cls) => `<svg class="${cls}" viewBox="0 0 600 600" aria-hidden="true"><circle class="fo-ring" cx="300" cy="300" r="290"/><circle class="fo-dot" cx="300" cy="300" r="11"/></svg>`;
+
+  /* финальная полоса «Сирена»: тёмная арена, свет гола сверху. Сетка в одну колонку — ничего не налезает */
+  const endBand = (id, title, extra = "") => `<section class="siren" id="${id}" aria-labelledby="${id}-t">
+      <div class="wrap siren-in">
+        <span class="led siren-clock" aria-hidden="true">00:00</span>
+        <h2 class="u siren-t" id="${id}-t">${title}</h2>
+        ${extra}
+        <div class="cta-row"><a class="btn btn--white btn--big" id="${id}-go" href="#/order">${CTA}</a><a class="link" href="https://t.me/${B.telegram}" target="_blank" rel="noopener">Написать в Telegram</a></div>
+      </div>
+    </section>`;
+
   function home() {
     const prices = PRICES.map((p) => `<div class="price${p.main ? " main" : ""}">
-        <div class="price-top"><span class="price-t">${esc(p.title)}</span>${p.games > 1 ? `<span class="${p.main ? "slant price-per" : "price-per"}">${rub(p.per)} ₽ за игру</span>` : ""}</div>
-        <div class="d price-p">${rub(p.price)} ₽</div>
-        <p>${esc(p.note)}${p.games > 1 ? `. Выгода ${p.save}%` : ""}</p></div>`).join("");
+        <div class="price-top"><span class="price-t">${esc(p.title)}</span>${p.main ? `<span class="price-badge">выгодно</span>` : ""}</div>
+        <div class="u price-p">${rub(p.price)}&nbsp;₽</div>
+        ${p.games > 1 ? `<p class="price-per">${rub(p.per)} ₽ за игру, выгода ${p.save}%</p>` : ""}
+        <p>${esc(p.note)}</p></div>`).join("");
     const vmax = Math.max(...VALUE.map((v) => v.price));
     const value = VALUE.map((v) => `<div class="vrow${v.us ? " us" : ""}">
-        <div class="vrow-head"><span>${esc(v.label)}</span><b class="d">${esc(v.text || rub(v.price) + " ₽")}</b></div>
+        <div class="vrow-head"><span>${esc(v.label)}</span><b>${esc(v.text || rub(v.price) + " ₽")}</b></div>
         <div class="vbar"><i style="--w:${Math.max(0.035, v.price / vmax).toFixed(3)}"></i></div>
         ${v.src ? `<small>${esc(v.src)}</small>` : ""}</div>`).join("");
     const half = PRICES[1].per < ICE.min / 2;   // фраза про половину выхода на лёд показывается, только пока это правда
@@ -145,169 +168,161 @@
       ["Где мои данные?", `На сайте мы ничего не храним: заявка — это сообщение в Telegram, туда же приходят видео. Лица не распознаём: ищем по номеру и цвету формы. Подробно: <a class="link" href="#/privacy">что мы храним и зачем</a>.`],
       ["Как работает пакет?", `Берёшь 5 или 10 игр и присылаешь их, когда играешь. Пакет действует ${OFFER.packMonths} месяцев. Платишь после первого результата. Не нашли тебя в игре? Она не списывается.`],
     ].map(([q, a]) => `<details class="faq-item"><summary>${q}</summary><p>${a}</p></details>`).join("");
-    const heroTrust = `${pilot ? `Первая игра бесплатно: ${seats().toLowerCase()}. ` : ""}Не нашли игрока в записи — не платишь.`;
+    const shifts = `${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}`;
+    /* схема розыгрыша: пунктирная стрелка через три точки вбрасывания (координаты — центры трёх колонок) */
+    const PLAY = "M236 50 C 360 -4, 470 104, 600 50 S 846 -4, 964 50";
 
     return `<div class="home">
-    <section class="hero" aria-labelledby="hero-t">
-      <img class="hero-bg" src="${O.media.frame(2)}" alt="" fetchpriority="high">
-      <span class="hero-scrim" aria-hidden="true"></span>
-      <span class="d ghost-n hero-ghost" aria-hidden="true">${O.number}</span>
+    <section class="hero ice" aria-labelledby="hero-t">
       <div class="wrap hero-in">
-        <div class="hero-text">
-          <h1 class="d hero-title" id="hero-t"><span>Каждая смена&nbsp;—</span> <span>отдельным</span> <span>видео</span></h1>
-          <p class="hero-sub">Пришли ссылку на трансляцию матча и номер на спине. Как всё будет готово, пришлём в Telegram все смены игрока, время на льду, голы при нём и ролик 9:16 — с обводкой игрока или без, как выберешь.</p>
-          <div class="cta-row"><a class="btn btn--accent btn--big" href="#/order">${ctaText()}</a><a class="link" href="#/result">Смотреть пример целиком</a></div>
-          <p class="hero-trust">${esc(heroTrust)}</p>
+        <div class="hero-txt">
+          ${faceoff("hero-circle")}
+          <h1 class="u hero-title" id="hero-t">Каждая смена&nbsp;—<br> отдельным<br> видео</h1>
+          <p class="hero-sub">Пришли ссылку на трансляцию матча и номер на спине. ${esc(B.name)} найдёт игрока во всей записи и пришлёт в Telegram каждую его смену, время на льду, голы при нём и ролик 9:16 — с обводкой игрока или без, как выберешь.</p>
+          <div class="cta-row"><a class="btn btn--accent btn--big" href="#/order">${CTA}</a><a class="more" href="#/result">Смотреть пример</a></div>
+          <p class="hero-trust">${TRUST}</p>
         </div>
-        <figure class="hero-phone">
+        <div class="hero-media">
           <div class="phone">${reelBox()}</div>
-        </figure>
-        ${statsRow("он")}
+          <p class="hand hero-note"><svg class="hand-arrow" viewBox="0 0 60 30" aria-hidden="true"><path d="M56 19 C 42 7, 24 6, 6 15 M6 15 L17 6 M6 15 L19 21"/></svg><span>это №${O.number}, ${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")} за период</span></p>
+        </div>
       </div>
     </section>
+    ${line("red")}
 
-    <section class="band band--2" id="shifts" aria-labelledby="sh-t">
+    <section class="per" id="p1" data-per="1-Й ПЕРИОД" aria-labelledby="p1-t">
       <div class="wrap">
-        <div class="sec-head"><h2 class="d sec-title" id="sh-t">${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}<br> ${PERIOD_GEN[O.period] || ""} периода</h2>
-          <p>Каждая смена — короткое видео с момента, как №${O.number} вышел на лёд, до ухода на скамейку. Время по табло трансляции. Нажми на смену, и она включится.</p></div>
+        ${perHead("1-й период", "p1-t", "Что приходит в Telegram", `Настоящий заказ: №${O.number}, ${esc(O.team)} против ${esc(O.opp)}, ${O.period}-й период, ${esc(O.date)}. Вот что пришло после игры.`)}
+        ${scoreboard("нём")}
+        <div class="rail-head"><h3 class="u">${shifts}&nbsp;— каждая отдельным видео</h3><p>С выхода на лёд до скамейки. Время по табло трансляции. Нажми на смену, и она включится.</p></div>
         <div class="rail">${shiftCards()}</div>
-        <div class="rail-foot"><button class="btn btn--line" type="button" data-play="all"><span>Все смены подряд одним видео</span><span class="d">${mmss(O.media.allLen)}</span></button><a class="link" href="#/result">Открыть страницу результата</a></div>
+        <div class="rail-foot"><button class="btn btn--line" type="button" data-play="all"><span>Все смены подряд одним видео</span><span class="rail-len">${mmss(O.media.allLen)}</span></button><a class="more" href="#/result">Открыть страницу результата</a></div>
         <div class="period">${timeline(null, { anim: true })}</div>
-        <p class="note">Настоящий заказ: №${O.number}, ${esc(O.team)} против ${esc(O.opp)}, ${O.period}-й период, ${esc(O.date)}. Это игра автора проекта.</p>
       </div>
     </section>
+    ${line("blue")}
 
-    <section class="band band--light" id="how" aria-labelledby="how-t">
+    <section class="per ice" id="how" data-per="2-Й ПЕРИОД" aria-labelledby="how-t">
       <div class="wrap">
-        <h2 class="d sec-title" id="how-t">Три шага<br> до своих смен</h2>
-        <ol class="steps">
-          <li><span class="d step-n" aria-hidden="true">1</span><h3>Пришли ссылку и номер</h3><p>Трансляция с VK Видео, YouTube или Rutube, номер на спине и цвет формы. Можно сразу несколько игроков. Это минута.</p></li>
-          <li><span class="d step-n" aria-hidden="true">2</span><h3>Находим игрока во всей записи</h3><p>ИИ ищет номер и цвет формы в каждом кадре, потом человек пересматривает каждую найденную смену.</p></li>
-          <li class="last"><span class="d step-n" aria-hidden="true">3</span><h3>Готово — пришлём в Telegram</h3><p>Как только всё проверим: смены отдельными видео, время на льду, голы при игроке и ролик 9:16 для сторис.</p></li>
-        </ol>
+        ${perHead("2-й период", "how-t", "Ты не хочешь&nbsp;— и не надо")}
+        <div class="two">
+          <div class="pain"><h3 class="hand">Не хочешь</h3>
+            <ul><li>Перематывать два часа трансляции</li><li>Искать себя среди двадцати игроков</li><li>Гадать, сколько ты на самом деле играл</li><li>Резать видео для сторис руками</li></ul></div>
+          <div class="solve"><h3 class="hand">Поэтому ${esc(B.name)}</h3>
+            <ul><li>Ссылка и номер — минута</li><li>Каждая смена — отдельное видео</li><li>Время на льду до секунды по табло</li><li>Ролик 9:16, камера ведёт за тобой</li></ul></div>
+        </div>
+        <div class="wb" data-draw>
+          <svg class="wb-path" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true">
+            <defs><mask id="wb-m" maskUnits="userSpaceOnUse" x="0" y="-40" width="1200" height="180"><path class="wb-mask" d="${PLAY}" pathLength="1"/></mask></defs>
+            <path class="wb-dash" d="${PLAY}" mask="url(#wb-m)"/><path class="wb-head" d="M950 29 L968 52 L939 53"/>
+          </svg>
+          <p class="hand wb-note">твоя часть — только первый шаг</p>
+          <ol class="steps">
+            <li style="--i:0"><span class="u step-n" aria-hidden="true">1</span><h3>Пришли ссылку и номер</h3><p>Трансляция с VK Видео, YouTube или Rutube, номер на спине и цвет формы. Можно сразу несколько игроков.</p></li>
+            <li style="--i:1"><span class="u step-n" aria-hidden="true">2</span><h3>${esc(B.name)} ищет тебя в записи</h3><p>ИИ находит номер и цвет формы в каждом кадре, потом человек пересматривает каждую смену.</p></li>
+            <li style="--i:2"><span class="u step-n" aria-hidden="true">3</span><h3>Видео приходят в Telegram</h3><p>Как только всё проверено: смены, время на льду, голы при тебе и ролик 9:16.</p></li>
+          </ol>
+        </div>
       </div>
     </section>
+    ${line("blue")}
 
-    <section class="band band--2" id="season" aria-labelledby="season-t">
+    <section class="per" id="prices" data-per="3-Й ПЕРИОД" aria-labelledby="pr-t">
       <div class="wrap">
-        <div class="sec-head"><h2 class="d sec-title" id="season-t">Своя статистика<br> за сезон</h2><p>Каждая присланная игра добавляется в твою историю. Видно, сколько ты на самом деле играешь и как это меняется от игры к игре.</p></div>
-        <ul class="season">
-          <li><h3 class="d">Смены</h3><p>Сколько раз выходил на лёд: за период, за игру, за сезон.</p></li>
-          <li><h3 class="d">Минуты на льду</h3><p>Точное время и средняя смена. Видно, больше тебе дают играть или меньше.</p></li>
-          <li><h3 class="d">Игры</h3><p>Все сыгранные матчи в одном списке, у каждой смены своё видео.</p></li>
-          <li><h3 class="d">Голы при тебе</h3><p>Плюс и минус: сколько забили и пропустили, пока ты был на льду.</p></li>
-        </ul>
-        <p class="note">Одна игра из примера: ${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}, ${T.toi} на льду, +${T.plus} −${T.minus}. С каждой новой игрой цифры складываются в сезон.</p>
-      </div>
-    </section>
-
-    <section class="band" id="prices" aria-labelledby="pr-t">
-      <div class="wrap">
-        <div class="sec-head"><h2 class="d sec-title" id="pr-t">Цены</h2><p>Платишь после того, как увидел свои смены. Не нашли тебя в записи — не платишь ничего.</p></div>
+        ${perHead("3-й период", "pr-t", "Цены", TRUST)}
         <div class="prices">${prices}</div>
-        <p class="note">${esc(freeLine())} Пакет действует ${OFFER.packMonths} месяцев, игры из пакета присылаешь, когда играешь.</p>
+        <p class="note">Пакет действует ${OFFER.packMonths} месяцев, игры из пакета присылаешь, когда играешь.</p>
         <div class="value">
-          <div class="value-say"><h3 class="d">${PRICES[0].price} ₽ за игру дешевле одного выхода на лёд</h3>
+          <div class="value-say"><h3 class="u">${PRICES[0].price}&nbsp;₽ за игру&nbsp;— дешевле одного выхода на лёд</h3>
             <p>${half ? `В пакете ${PRICES[1].per} ₽ за игру, это меньше половины выхода на лёд. ` : ""}Ручной разбор у видеоаналитика стоит в 8–25 раз дороже.</p></div>
           <div class="vrows">${value}</div>
         </div>
+
+        <div class="season-wrap" id="season">
+          <h3 class="u sub-t">Своя статистика за сезон</h3>
+          <p class="per-lead">Каждая присланная игра добавляется в твою историю. Видно, сколько ты на самом деле играешь и как это меняется от игры к игре.</p>
+          <ul class="season">
+            <li><h4>Смены</h4><p>Сколько раз выходил на лёд: за период, за игру, за сезон.</p></li>
+            <li><h4>Минуты на льду</h4><p>Точное время и средняя смена. Видно, больше тебе дают играть или меньше.</p></li>
+            <li><h4>Игры</h4><p>Все сыгранные матчи в одном списке, у каждой смены своё видео.</p></li>
+            <li><h4>Голы при тебе</h4><p>Плюс и минус: сколько забили и пропустили, пока ты был на льду.</p></li>
+          </ul>
+          <p class="note">Одна игра из примера: ${shifts}, ${T.toi} на льду, +${T.plus} −${T.minus}. С каждой новой игрой цифры складываются в сезон.</p>
+        </div>
+
+        <div class="team" id="team">
+          <svg class="team-rink" viewBox="0 0 400 200" aria-hidden="true"><rect x="4" y="4" width="392" height="192" rx="64"/><path class="r" d="M200 4v192"/><path class="b" d="M140 4v192M260 4v192"/><circle cx="200" cy="100" r="34"/><circle cx="80" cy="60" r="20"/><circle cx="80" cy="140" r="20"/><circle cx="320" cy="60" r="20"/><circle cx="320" cy="140" r="20"/></svg>
+          <h3 class="u team-t">Командам</h3>
+          <div class="team-body"><p><b>Тренер или капитан?</b> Разберём всю команду с одной записи: смены и время на льду каждого игрока. Цену посчитаем под ваш состав.</p>
+            <a class="btn btn--accent btn--big" href="${tgLink(TEAM_MSG)}" target="_blank" rel="noopener">${ICON.tg}Написать про команду</a></div>
+        </div>
       </div>
     </section>
+    ${line("red")}
 
-    <section class="band band--3" id="team" aria-labelledby="team-t">
-      <div class="wrap team">
-        <h2 class="d sec-title" id="team-t">Командам</h2>
-        <div><p><b>Тренер или капитан?</b> Разберём всю команду с одной записи: смены и время на льду каждого игрока. Цену посчитаем под ваш состав.</p>
-          <a class="btn" href="${tgLink(TEAM_MSG)}" target="_blank" rel="noopener">${ICON.tg}Написать про команду</a></div>
-      </div>
-    </section>
-
-    <section class="band band--2" id="faq" aria-labelledby="faq-t">
-      <div class="wrap faq-grid">
-        <h2 class="d sec-title" id="faq-t">Вопросы</h2>
+    <section class="per ice" id="faq" data-per="ОВЕРТАЙМ" aria-labelledby="faq-t">
+      <div class="wrap">
+        ${perHead("Овертайм", "faq-t", "Вопросы")}
         <div class="faq">${faq}</div>
       </div>
     </section>
+    ${line("goal")}
 
-    <section class="cta-band" aria-labelledby="end-t">
-      <img class="cta-bg" src="${O.media.frame(7)}" alt="" loading="lazy">
-      <div class="wrap cta-grid">
-        <div class="cta-text">
-          <h2 class="d cta-title" id="end-t">Хочешь так же про себя?</h2>
-          <p>Пришли ссылку на трансляцию своей игры и номер. Как всё будет готово, пришлём в Telegram все твои смены, время на льду и ролик.</p>
-          <div class="cta-row"><a class="btn btn--big" href="#/order">${ctaText()}</a>${pilot ? `<span>${esc(seats())}</span>` : `<a class="link" href="https://t.me/${B.telegram}" target="_blank" rel="noopener">Написать в Telegram</a>`}</div>
-        </div>
-        <div class="phone cta-phone"><img src="${O.media.reelPoster}" alt="Кадр ролика 9:16: игрок №${O.number} с неоновой обводкой" loading="lazy"></div>
-      </div>
-    </section>
+    ${endBand("end", "Твоя игра.<br> Твои смены.")}
     </div>`;
   }
 
   /* ================= РЕЗУЛЬТАТ ================= */
   function result(_, q = "") {
     const n = state.shift, own = /(^|&)own\b/.test(q), who = own ? "тебе" : "нём";
-    const survey = `Привет! Отвечаю на три вопроса после бесплатной игры.\n1. Что из результата пригодилось: \n2. При какой цене это уже дорого: \n3. Прислать следующую игру за ${PRICES[0].price} ₽: да / нет`;
     return `<div class="res">
-      <section class="hero r-hero" aria-labelledby="r-title">
-        <img class="hero-bg" src="${O.media.frame(7)}" alt="">
-        <span class="hero-scrim" aria-hidden="true"></span>
-        <div class="wrap r-hero-in">
-          <div class="r-id">
-            <p class="r-done">${ICON.check}${own ? "Готово. Каждую смену проверил человек" : "Все смены игрока из трансляции. Каждую проверил человек"}</p>
-            <h1 class="d r-title" id="r-title">${esc(O.team)}</h1>
-            <p class="r-sub">против ${esc(O.opp)}, ${O.period}-й период, ${esc(O.date)}</p>
-          </div>
-          ${jersey(O.number, true)}
-          ${statsRow(own ? "ты" : "он")}
-        </div>
-      </section>
-
-      <section class="band band--2" aria-labelledby="r-sh">
+      <section class="r-hero ice" aria-labelledby="r-title">
         <div class="wrap">
-          <div class="sec-head"><h2 class="d sec-title" id="r-sh">${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}</h2><p>Каждая смена — отдельное видео. Нажми, и она включится: там же ссылка на этот момент в трансляции и «Скачать».</p></div>
+          <div class="r-hero-in">
+            <div class="r-id">
+              <p class="r-done">${ICON.check}${own ? "Готово. Каждую смену проверил человек" : "Все смены игрока из трансляции. Каждую проверил человек"}</p>
+              <h1 class="u r-title" id="r-title">${esc(O.team)}</h1>
+              <p class="r-sub">против ${esc(O.opp)}, ${O.period}-й период, ${esc(O.date)}</p>
+            </div>
+            ${jersey(O.number, true)}
+          </div>
+          <div class="r-stats">${scoreboard(own ? "тебе" : "нём")}</div>
+        </div>
+      </section>
+      ${line("red")}
+
+      <section class="band" aria-labelledby="r-sh">
+        <div class="wrap">
+          ${perHead(`${O.period}-й период`, "r-sh", `${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}`, "Каждая смена — отдельное видео. Нажми, и она включится: там же ссылка на этот момент в трансляции и «Скачать».")}
           <div class="rail">${shiftCards()}</div>
-          <div class="rail-foot"><button class="btn btn--line" type="button" data-play="all"><span>Все смены подряд: одно видео вместе с остановками игры</span><span class="d">${mmss(O.media.allLen)}</span></button></div>
+          <div class="rail-foot"><button class="btn btn--line" type="button" data-play="all"><span>Все смены подряд: одно видео вместе с остановками игры</span><span class="rail-len">${mmss(O.media.allLen)}</span></button></div>
         </div>
       </section>
 
-      <section class="band" aria-label="Период и ролик">
+      <section class="band ice" aria-label="Период и ролик">
         <div class="wrap r-grid">
-          <div class="r-main">
-            <div class="blk-head"><h2 class="d blk-title">Период по секундам</h2><span>Нажми на полосу, чтобы выбрать смену</span></div>
+          <div class="r-main tile">
+            <div class="blk-head"><h2 class="u blk-title">Период по секундам</h2><span>Нажми на полосу, чтобы выбрать смену</span></div>
             ${timeline(n, { who })}
             <div class="picked" id="picked">${pickedCard(n)}</div>
           </div>
-          <aside class="r-side">
-            <h2 class="d blk-title">Ролик с обводкой</h2>
+          <aside class="r-side tile tile--dark">
+            <h2 class="u blk-title">Ролик с обводкой</h2>
             <div class="phone">${reelBox()}</div>
             <span class="reel-mark"><i></i>Неоновая обводка, прожектор, ${O.media.reelLen} с</span>
-            <div class="actions"><a class="btn" href="${O.media.reel}" download="smeny-${O.number}-rolik.mp4">${ICON.down}Скачать</a><button class="btn btn--line" type="button" data-share>${ICON.share}Поделиться</button></div>
+            <div class="actions"><a class="btn btn--white" href="${O.media.reel}" download="smeny-${O.number}-rolik.mp4">${ICON.down}Скачать</a><button class="btn btn--line" type="button" data-share>${ICON.share}Поделиться</button></div>
           </aside>
         </div>
-        <p class="wrap note">Время по табло. Если что-то не так, напиши в Telegram: переделаем бесплатно.</p>
+        <p class="wrap note">Время по табло. Если что-то не так, напиши в Telegram — переделаем без доплаты.</p>
       </section>
 
-      ${own ? `<section class="band band--3"><div class="wrap r-own">
-        ${pilot ? `<div class="panel" id="pilot-ask"><h2 class="d blk-title">Три коротких вопроса</h2>
-          <p>Эта игра была бесплатной. Взамен ответь на три вопроса, это минута.</p>
-          <ol><li>Что из результата пригодилось?</li><li>При какой цене это уже дорого?</li><li>Прислать следующую игру за ${PRICES[0].price} ₽?</li></ol>
-          <div class="actions"><a class="btn btn--accent" id="ask-go" href="${tgLink(survey)}" target="_blank" rel="noopener">${ICON.tg}Ответить в Telegram</a></div>
-          <p class="cap">Откроется Telegram с готовым текстом, останется вписать ответы.</p></div>` : ""}
-        <div class="panel"><h2 class="d blk-title">Следующая игра на этой неделе?</h2>
+      ${own ? `<section class="band"><div class="wrap r-own">
+        <div class="panel tile"><h2 class="u blk-title">Следующая игра на этой неделе?</h2>
           <p>${PRICES[1].games} игр за ${rub(PRICES[1].price)} ₽, это ${PRICES[1].per} ₽ за игру. Платишь после результата, пакет действует ${OFFER.packMonths} месяцев.</p>
           <div class="actions"><a class="btn btn--accent" href="#/order">Прислать следующую игру</a><button class="btn btn--line" type="button" data-share>${ICON.share}Скинуть в чат команды</button></div></div>
-      </div></section>` : `<section class="cta-band" id="want" aria-labelledby="want-t">
-        <img class="cta-bg" src="${O.media.frame(2)}" alt="" loading="lazy">
-        <div class="wrap cta-grid">
-          <div class="cta-text">
-            <h2 class="d cta-title" id="want-t">Это смены №${O.number}. Хочешь так же про себя?</h2>
-            <p>Пришли ссылку на трансляцию своей игры и номер. Как всё будет готово, пришлём в Telegram все твои смены, время на льду и ролик. ${pilot ? `Первая игра бесплатно: ${seats().toLowerCase()}.` : `Игра стоит ${PRICES[0].price} ₽, платишь после результата.`}</p>
-            <div class="cta-row"><a class="btn btn--big" id="want-go" href="#/order">${ctaText()}</a><a class="link" href="#/" data-jump="how">Как это работает</a></div>
-            <p class="cta-trust">Платишь после того, как увидел свои смены. Не нашли тебя в записи — не платишь ничего.</p>
-          </div>
-          <div class="phone cta-phone"><img src="${O.media.reelPoster}" alt="Кадр ролика 9:16: игрок №${O.number} с неоновой обводкой" loading="lazy"></div>
-        </div>
-      </section>`}
+      </div></section>` : `${line("goal")}${endBand("want", `Это смены №${O.number}. Хочешь так же про себя?`,
+        `<p class="siren-lead">Пришли ссылку на трансляцию своей игры и номер. Как всё будет готово, пришлём в Telegram все твои смены, время на льду и ролик. Игра стоит ${PRICES[0].price} ₽, платишь после результата. Не нашли тебя в записи — не платишь.</p>
+        <a class="more siren-how" href="#/" data-jump="how">Как это работает</a>`)}`}
     </div>`;
   }
 
@@ -339,8 +354,8 @@
     return bad("С этого сайта пока не разбираем. Подходят VK Видео, YouTube и Rutube.");
   }
 
-  /* Экран заказа (V10): конфигуратор. Слева площадка-лёд со свитерами игроков заявки, под выбранным — неоновая
-     обводка, как в ролике результата. Справа панель: ссылка, период, вкладки игроков, номер, команда, цвет формы, ник, итог.
+  /* Экран заказа (V10, вид V22): конфигуратор. Слева светлая площадка со свитерами игроков заявки, под выбранным — эллипс
+     обводки его цветом. Справа белая карточка: ссылка, период, вкладки игроков, номер, команда, цвет формы, обводка.
      Несколько игроков — несколько заказов одной заявки (поле group): общая часть расчёта матча берётся из первого (A7). */
   const MAXP = 5;
   const SW = "M66 8 Q100 20 134 8 L172 22 Q190 30 193 48 L198 100 L164 106 L161 70 L161 162 Q100 170 39 162 L39 70 L36 106 L2 100 L7 48 Q10 30 28 22 Z";
@@ -388,11 +403,8 @@
   function stageTitle() {
     const nums = state.order.players.map((p) => p.number).filter(Boolean).map((n) => `№${esc(n)}`);
     const list = nums.length > 1 ? `${nums.slice(0, -1).join(", ")} и ${nums[nums.length - 1]}` : nums[0] || "";
-    return list ? `Ищем в записи <b>${list}</b>` : "Кого ищем в записи?";
+    return list ? `Ищем в записи <b>${list}</b>` : "Впиши номер на спине";
   }
-
-  /* большой контурный номер выбранного игрока на фоне площадки */
-  const bigNum = () => state.order.players[state.sel]?.number || "97";
 
   function stageChips() {
     const o = state.order, svc = svcName(o.url), sc = SCOPES.find((s) => s[0] === o.scope);
@@ -436,19 +448,17 @@
     const o = state.order, n = o.players.length, svc = svcName(o.url);
     if (state.sel >= n) state.sel = 0;
     const scopes = SCOPES.map(([k, t, short]) => `<button type="button" data-scope="${k}" aria-pressed="${o.scope === k}" aria-label="${t}">${short}</button>`).join("");
-    return `<div class="wrap o2">
+    return `<div class="wrap o2-page">
+      <header class="o2-head"><h1 class="u o2-h1">Кого ищем в записи?</h1><p>Ссылка на матч, номер и цвет формы. Остальное ${esc(B.name)} сделает сам.</p></header>
+      <div class="o2">
       <section class="o2-stage" aria-label="Игроки в заявке">
-        <i class="o2-mk o2-blue" aria-hidden="true"></i><i class="o2-mk o2-red" aria-hidden="true"></i><i class="o2-mk o2-circle" aria-hidden="true"></i><i class="o2-mk o2-spot" aria-hidden="true"></i><i class="o2-mk o2-light" aria-hidden="true"></i>
-        <span class="d ghost-n o2-big" id="o2-big" aria-hidden="true">${esc(bigNum())}</span>
         <div class="o2-chips" id="o2-chips">${stageChips()}</div>
         <div class="o2-jrow" id="o2-jrow">${stageRow()}</div>
-        <div class="o2-foot"><h1 class="d o2-title" id="o2-title">${stageTitle()}</h1><p>ИИ ищет игрока по номеру и цвету формы, потом человек пересматривает каждую смену.</p></div>
+        <div class="o2-foot"><p class="o2-title" id="o2-title" aria-live="polite">${stageTitle()}</p><p>ИИ ищет игрока по номеру и цвету формы, потом человек пересматривает каждую смену.</p></div>
       </section>
 
       <form id="order-form" class="o2-panel" novalidate aria-label="Заявка">
         <div class="o2-pbody">
-          <div class="o2-phead"><h2 class="d">Заявка</h2></div>
-
           <div class="o2-sec">
             <label class="o2-lbl" for="f-url">Ссылка на игру</label>
             <div class="o2-link${svc ? " ok" : ""}" id="o2-link">
@@ -458,7 +468,8 @@
             </div>
             <p class="url-note" id="url-note" role="status" hidden></p>
             <p class="err" id="err-url" role="alert" hidden>Нужна ссылка на запись игры: VK Видео, YouTube или Rutube.</p>
-            <div class="seg o2-seg" id="scopes" role="group" aria-label="Что разобрать">${scopes}</div>
+            <span class="o2-lbl o2-lbl--gap" id="scopes-lbl">Период</span>
+            <div class="seg o2-seg" id="scopes" role="group" aria-labelledby="scopes-lbl">${scopes}</div>
             <p class="o2-hint">Нет ссылки под рукой? <button type="button" class="link" id="paste-demo">Заполнить примером</button></p>
           </div>
 
@@ -473,12 +484,12 @@
         </div>
 
         <div class="o2-pfoot">
-          <p class="o2-when">Результат пришлём в Telegram, <b>как всё будет готово</b></p>
-          <button class="btn btn--accent o2-go" type="submit">Отправить заявку</button>
+          <button class="btn btn--accent btn--big o2-go" type="submit">Отправить заявку в Telegram</button>
           <p class="o2-trustline">${orderTrust}</p>
         </div>
-        <div class="o2-bar"><span class="o2-bar-when">Пришлём в Telegram,<br><b>как будет готово</b></span><button class="btn btn--accent" type="submit">Отправить заявку</button></div>
+        <div class="o2-bar"><button class="btn btn--accent btn--big" type="submit">Отправить заявку в Telegram</button></div>
       </form>
+      </div>
     </div>`;
   }
 
@@ -500,7 +511,6 @@
     const paint = () => {
       row.innerHTML = stageRow();
       $("#o2-title").innerHTML = stageTitle();
-      $("#o2-big").textContent = bigNum();
       tabs.innerHTML = tabsHtml();
       saveDraft();
     };
@@ -664,7 +674,7 @@
         <svg class="st-ico" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="36"/><path d="M40 22v24M40 56v2"/></svg>
         <h1 class="d2">Эту игру не получится разобрать</h1>
         <p class="lead">Номер не виден в записи: камера далеко, цифры на спине не читаются. Ничего не платишь.</p>
-        <p class="lead">Пришли другую игру: нужна запись трансляции, где камера ближе. Её разберём бесплатно.</p>
+        <p class="lead">Пришли другую игру: нужна запись трансляции, где камера ближе.</p>
         <div class="hero-cta"><a class="btn btn--accent btn--big" href="#/order">Прислать другую игру</a><a class="link" href="https://t.me/${B.telegram}" target="_blank" rel="noopener">Написать в Telegram</a></div>
       </div></div>`;
     }
@@ -684,7 +694,7 @@
       <div class="st-grid">
         <ol class="st-steps" aria-live="polite">${steps}</ol>
         <div class="st-side">
-          ${isDone ? (R ? `<a class="st-result" href="${esc(R.url)}" target="_blank" rel="noopener"><span class="num">${mmss(R.toi)}</span><span>на льду, ${R.shifts} ${plural(R.shifts, "смена", "смены", "смен")}</span><span class="btn btn--accent">Открыть результат</span></a>${R.until ? `<p class="st-keep">Видео хранится до <b>${new Date(R.until * 1000 - 86400000).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</b>. Скачайте его на странице результата, чтобы оно осталось у вас.</p>` : ""}` : `<a class="st-result" href="#/result?own"><span class="num">${T.toi}</span><span>на льду, ${T.shifts} смен</span><span class="btn btn--accent">Открыть результат</span></a>`) : `
+          ${isDone ? (R ? `<a class="st-result" href="${esc(R.url)}" target="_blank" rel="noopener"><span class="sb-l">На льду</span><span class="led st-num">${board(mmss(R.toi))}</span><span>${R.shifts} ${plural(R.shifts, "смена", "смены", "смен")}</span><span class="btn btn--white">Открыть результат</span></a>${R.until ? `<p class="st-keep">Видео хранится до <b>${new Date(R.until * 1000 - 86400000).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</b>. Скачайте его на странице результата, чтобы оно осталось у вас.</p>` : ""}` : `<a class="st-result" href="#/result?own"><span class="sb-l">На льду</span><span class="led st-num">${board(T.toi)}</span><span>${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}</span><span class="btn btn--white">Открыть результат</span></a>`) : `
           <div class="st-soon" aria-label="Пример того, что придёт">
             <div class="st-soon-reel"><img src="${O.media.reelPoster}" alt="" loading="lazy"><svg viewBox="0 0 90 160" aria-hidden="true"><ellipse cx="45" cy="112" rx="24" ry="7"/></svg><b>№${esc(o.number)}</b></div>
             <div class="st-soon-txt"><b>Ролик появится здесь</b><span>И цифры игры: время на льду, смены, голы при игроке.</span>
@@ -736,16 +746,16 @@
   }
   function terms() {
     return doc("Условия", "Как мы работаем и за что ты платишь.", [
-      ["Оплата", ["Платишь после результата: сначала смотришь свои смены, потом платишь.", "Карту заранее не просим и сами ничего не списываем. Реквизиты для перевода пришлём вместе с результатом. <i>Способ оплаты уточнить.</i>", `Игра стоит ${PRICES[0].price} ₽. Пакет ${PRICES[1].games} игр ${rub(PRICES[1].price)} ₽, пакет ${PRICES[2].games} игр ${rub(PRICES[2].price)} ₽.`, pilot ? `Первые ${OFFER.freeTotal} игроков получают одну игру бесплатно. Взамен три коротких вопроса.` : "Первая игра по обычной цене."]],
+      ["Оплата", ["Платишь после результата: сначала смотришь свои смены, потом платишь.", "Карту заранее не просим и сами ничего не списываем. Реквизиты для перевода пришлём вместе с результатом. <i>Способ оплаты уточнить.</i>", `Игра стоит ${PRICES[0].price} ₽. Пакет ${PRICES[1].games} игр ${rub(PRICES[1].price)} ₽, пакет ${PRICES[2].games} игр ${rub(PRICES[2].price)} ₽.`]],
       ["Пакеты", [`Пакет действует ${OFFER.packMonths} месяцев с первой игры.`, "Игры из пакета присылаешь, когда удобно.", "Игра, в которой мы тебя не нашли, из пакета не списывается.", "Возврат за неиспользованные игры пакета. <i>Порядок уточнить у юриста.</i>"]],
-      ["Если не нашли", ["Не нашли игрока в записи: ничего не платишь.", "Нашли не все смены или ошиблись: напиши, переделаем бесплатно."]],
+      ["Если не нашли", ["Не нашли игрока в записи: ничего не платишь.", "Нашли не все смены или ошиблись: напиши, переделаем без доплаты."]],
       ["Сроки", ["Результат приходит в Telegram, как только всё готово и проверено.", "Если запись не подходит, скажем об этом раньше."]],
       ["Какие записи подходят", ["Запись трансляции на VK Видео, YouTube или Rutube, где на спине виден номер.", "Видео с телефона и файлы из облака пока не разбираем."]],
       ["Чья запись", ["Права на трансляцию принадлежат организатору игры. Мы даём ссылки на моменты в записи и видео для личного просмотра. <i>Формулировку уточнить у юриста.</i>"]],
     ]);
   }
   function notFound() {
-    return `<div class="wrap st"><div class="st-refuse"><span class="num nf-num" aria-hidden="true" data-v="404"></span>
+    return `<div class="wrap st"><div class="st-refuse"><span class="nf-board" aria-hidden="true"><span class="sb-l">Вне игры</span><span class="led nf-num" data-v="404"></span></span>
       <h1 class="d2">Такой страницы нет</h1><p class="lead">Ссылка устарела или в ней опечатка. Вот куда можно пойти.</p>
       <div class="hero-cta"><a class="btn btn--accent btn--big" href="#/">На главную</a><a class="link" href="#/result">Смотреть пример</a><a class="link" href="https://t.me/${B.telegram}" target="_blank" rel="noopener">Написать в Telegram</a></div></div></div>`;
   }
@@ -778,7 +788,7 @@
     document.title = `${B.name}: вход для оператора`;
     view.className = "";
     view.innerHTML = `<div class="wrap gate"><form class="gate-card" id="gate-form" novalidate>
-      <svg class="logo-mark gate-mark" viewBox="0 0 64 56" aria-hidden="true"><path class="lm-body" d="M4 18v16c0 7.7 12.5 14 28 14s28-6.3 28-14V18"/><ellipse class="lm-top" cx="32" cy="18" rx="28" ry="14"/><path class="lm-play" d="M25 10.5 L43 18 L25 25.5 Z"/></svg>
+      <svg class="logo-mark gate-mark" viewBox="0 0 76 40" aria-hidden="true"><rect class="lm-line" x="0" y="19" width="76" height="2.5"/><path class="lm-stint" d="M26 6 H58 L50 34 H18 Z"/></svg>
       <h1 class="d3">Вход для оператора</h1>
       <label for="gate-pin">Код</label>
       <input class="input gate-pin" id="gate-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" enterkeyhint="go" aria-describedby="gate-err">
@@ -797,7 +807,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261122a";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261122d";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
@@ -832,12 +842,17 @@
     document.body.dataset.route = nav;
     document.documentElement.style.setProperty("--mark", markerHex(O.marker));
     $$("[data-nav]").forEach((a) => a.classList.toggle("on", a.dataset.nav === nav));
-    document.title = `${B.name} ${B.product}: ${TITLES[route] || TITLES[nav] || TITLES.none}`;
-    const cta = $(".top-cta"); if (cta) cta.innerHTML = route === "result" && !/(^|&)own\b/.test(query) ? "Хочу так же" : `<span>Получить смены<span class="cta-tail">${esc(ctaText().replace("Получить смены", ""))}</span></span>`;
+    document.title = `${[B.name, B.product].filter(Boolean).join(" ")}: ${TITLES[route] || TITLES[nav] || TITLES.none}`;
+    const own = /(^|&)own\b/.test(query);
+    const cta = $(".top-cta"); if (cta) cta.textContent = route === "result" && !own ? "Хочу так же" : CTA;
     if (jump) { const el = document.getElementById(jump); jump = null; window.scrollTo(0, 0); if (el) requestAnimationFrame(() => el.scrollIntoView({ block: "start" })); }
     else window.scrollTo(0, 0);
     showDock(true);
-    requestAnimationFrame(() => { view.classList.add("go-in"); reveal(); });
+    /* часы в шапке: на главной идут вместе с прокруткой, на остальных страницах — подпись страницы */
+    pers = nav === "home" ? $$("[data-per]", view) : [];
+    if (pers.length) tickClock();
+    else setClock(...(route === "result" ? [own ? "РЕЗУЛЬТАТ" : "ПРИМЕР", `№${O.number}`] : [CLOCK[route] || CLOCK.none, ""]));
+    requestAnimationFrame(() => { view.classList.add("go-in"); motion(); });
     if (route === "order") bindOrder();
     if (route === "status") bindStatus(rest[0]);
   }
@@ -851,18 +866,49 @@
     } else run();
   }
 
-  /* ---------- движение: только шкала смен прорисовывается, когда попала на экран. Цифры не «докручиваются» ---------- */
+  /* ---------- движение: одна система на весь сайт ----------
+     (а) часы в шапке идут вместе с прокруткой главной; (б) цифры табло один раз «прокручиваются» к настоящему значению;
+     (в) стрелка розыгрыша рисуется сама; (г) полосы смен на шкале выезжают по очереди. Больше на прокрутку ничего не движется.
+     prefers-reduced-motion: классы .armed не ставятся — всё сразу в конечном виде, часы показывают только период. */
   let io = null;
-  function reveal() {
+  function motion() {
     io?.disconnect();
-    const targets = $$("[data-tl]", view);
-    if (!("IntersectionObserver" in window)) { targets.forEach((el) => el.classList.add("play")); return; }
+    const targets = $$("[data-tl], [data-roll], [data-draw]", view);
+    if (reduced || !("IntersectionObserver" in window)) return;
+    targets.forEach((el) => el.classList.add("armed"));
     io = new IntersectionObserver((ents) => ents.forEach((e) => {
       if (!e.isIntersecting) return;
-      io.unobserve(e.target); e.target.classList.add("play");
-    }), { rootMargin: "0px 0px 10% 0px", threshold: 0.01 });
+      io.unobserve(e.target); e.target.classList.add("is-in");
+    }), { threshold: 0.35 });
     targets.forEach((el) => io.observe(el));
   }
+
+  /* часы-табло в шапке: период секции, которая на экране, и время от 20:00 до 0:00 по прокрутке внутри неё */
+  const CLOCK = { order: "ЗАКАЗ", status: "СТАТУС", privacy: "ДАННЫЕ", terms: "УСЛОВИЯ", none: "ОФСАЙД" };
+  const clk = $("#clock"), clkL = $("#clock-l"), clkT = $("#clock-t");
+  let pers = [], clkRaf = 0;
+  function setClock(label, time) {
+    if (!clk) return;
+    if (clkL.textContent !== label) clkL.textContent = label;
+    if (clkT.textContent !== time) clkT.textContent = time;
+    clk.classList.toggle("no-t", !time);
+  }
+  function tickClock() {
+    clkRaf = 0;
+    if (!pers.length) return;
+    const a = scrollY + innerHeight * 0.45;                // точка отсчёта — чуть выше середины экрана
+    let label = pers[0].dataset.per, left = O.periodSec;   // герой — центр льда до вбрасывания: 20:00
+    for (const s of pers) {
+      const top = s.getBoundingClientRect().top + scrollY;
+      if (a < top) break;
+      label = s.dataset.per;
+      left = Math.round(O.periodSec * (1 - Math.min(1, (a - top) / s.offsetHeight)));
+    }
+    setClock(label, reduced ? "" : mmss(left));
+  }
+  const onClock = () => { if (pers.length && !clkRaf) clkRaf = requestAnimationFrame(tickClock); };
+  window.addEventListener("scroll", onClock, { passive: true });
+  window.addEventListener("resize", onClock, { passive: true });
 
   /* метки, где ИИ видит игрока в клипе смены: плеер открывает смену с этого момента */
   function loadMarks(cb) {
