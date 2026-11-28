@@ -600,7 +600,7 @@
       const t = totals(o), base = window.SHARE_URL || location.href.split("#")[0];
       const link = base + "#/result?own", local = /^(localhost|127\.|\[::1\])/.test(location.hostname) && !window.SHARE_URL;
       const lines = [`Привет! Смены готовы: ${o.home} – ${o.away}, ${o.period.toLowerCase()}.`, `${t.n} смен, ${mmss(t.toi)} на льду, средняя смена ${t.avg} с.`,
-        o.cutAt ? `Запись трансляции обрывается на ${o.cutAt} по табло: смены после этого момента не видны.` : "", `Все смены, видео и ролик: ${link}`,
+        o.cutAt ? `Запись трансляции обрывается на ${o.cutAt} по табло: смены после этого момента не видны.` : "", `Все смены и видео: ${link}`,
         OFFER.freeLeft > 0 ? `Эта игра бесплатно. Внизу страницы три коротких вопроса, ответь на них, пожалуйста.` : "", `Следующая игра: ${PRICES[0].price} ₽, оплата после результата.`, "Если что-то не так, напиши, переделаем бесплатно."].filter(Boolean);
       const msg = lines.join("\n");
       const href = o.client.tg ? `https://t.me/${encodeURIComponent(o.client.tg)}?text=${encodeURIComponent(msg)}` : `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(lines.filter((l) => !l.includes(link)).join("\n"))}`;

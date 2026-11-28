@@ -199,6 +199,9 @@ body[data-route="order"] .dock { display: none; }
 .reel-play svg { width: 22px; height: 22px; fill: var(--ink); margin-left: 4px; }
 .reel-play:focus-visible { outline-offset: -8px; }
 .reel.playing .reel-play { opacity: 0; pointer-events: none; }
+.screen { width: min(100%, 560px); padding: 8px; border-radius: 22px; background: var(--night); box-shadow: 0 50px 90px -40px rgba(11, 18, 32, .6); }
+.reel--wide { aspect-ratio: 16 / 9; border-radius: 15px; }
+.r-side-txt { margin: 10px 0 16px; color: var(--on-night-2); line-height: 1.5; }
 
 /* секция-период: белый борт или лёд, сверху подпись периода цифрами табло и заголовок */
 .per { padding: 56px 0 64px; background-color: var(--board); }
@@ -814,3 +817,14 @@ body[data-route="order"] .dock { display: none; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0s !important; }
   html { scroll-behavior: auto; }
 }
+
+/* Первый экран с видео смены 16:9 вместо ролика 9:16 (28.11.2026): подпись под видео, колонки поровну */
+.hero-media:has(.screen) { flex-direction: column; align-items: stretch; }
+.hero-media:has(.screen) .hero-note { width: auto; margin: 0; flex-direction: row; justify-content: center; align-items: center; gap: 6px; }
+.screen { width: 100%; max-width: 560px; margin: 0 auto; }
+@media (min-width: 900px) {
+  .hero-in:has(.screen) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+/* Блок «Все смены одним файлом» вместо ролика: прижат кверху, кнопки обычной высоты */
+.r-side:has(.r-side-txt) { align-content: start; align-self: start; }
+.r-side:has(.r-side-txt) .r-side-txt { margin: 0; }

@@ -96,7 +96,10 @@
       <div class="picked-info"><div><h3 class="u">Смена ${n}</h3><p>${s.c0} – ${s.c1} по табло ${goalTag(g)}</p></div><span class="u picked-sec">${s.sec}<small>с</small></span></div>`;
   }
 
-  /* ролик 9:16 в рамке телефона; кнопка включает его со звуком */
+  /* видео одной смены в рамке 16:9 (ролик 9:16 клиентам пока не предлагаем, 28.11.2026); кнопка включает его со звуком */
+  const BEST = O.shifts.reduce((a, s) => (s.sec > a.sec ? s : a), O.shifts[0]);
+  const shiftBox = (s = BEST) => `<div class="reel reel--wide"><video src="${O.media.shift(s.n)}" poster="${O.media.frame(s.n)}" playsinline preload="none" aria-label="Смена ${s.n}: ${mmss(s.sec)} на льду, камера трансляции"></video><button class="reel-play" type="button" aria-label="Включить смену ${s.n}"><span>${ICON.play}</span></button></div>`;
+  /* ролик 9:16 в рамке телефона (сейчас на сайте не показывается) */
   const reelBox = () => `<div class="reel" id="reel"><video src="${O.media.reel}" poster="${O.media.reelPoster}" playsinline preload="none" aria-label="Ролик ${O.media.reelLen} секунд: камера ведёт за игроком №${O.number}, под ним неоновый эллипс"></video><button class="reel-play" type="button" aria-label="Включить ролик"><span>${ICON.play}</span></button></div>`;
 
 
@@ -178,13 +181,13 @@
         <div class="hero-txt">
           ${faceoff("hero-circle")}
           <h1 class="u hero-title" id="hero-t">Каждая смена&nbsp;—<br> отдельным<br> видео</h1>
-          <p class="hero-sub">Пришли ссылку на трансляцию матча и номер на спине. ${esc(B.name)} найдёт игрока во всей записи и пришлёт в Telegram каждую его смену, время на льду, голы при нём и ролик 9:16 — с обводкой игрока или без, как выберешь.</p>
+          <p class="hero-sub">Пришли ссылку на трансляцию матча и номер на спине. ${esc(B.name)} найдёт игрока во всей записи и пришлёт в Telegram каждую его смену отдельным видео, время на льду и голы при нём. Обводка игрока в видео — по желанию.</p>
           <div class="cta-row"><a class="btn btn--accent btn--big" href="#/order">${CTA}</a><a class="more" href="#/result">Смотреть пример</a></div>
           <p class="hero-trust">${TRUST}</p>
         </div>
         <div class="hero-media">
-          <div class="phone">${reelBox()}</div>
-          <p class="hand hero-note"><svg class="hand-arrow" viewBox="0 0 60 30" aria-hidden="true"><path d="M56 19 C 42 7, 24 6, 6 15 M6 15 L17 6 M6 15 L19 21"/></svg><span>это №${O.number}, ${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")} за период</span></p>
+          <div class="screen">${shiftBox()}</div>
+          <p class="hand hero-note"><svg class="hand-arrow" viewBox="0 0 60 30" aria-hidden="true"><path d="M56 19 C 42 7, 24 6, 6 15 M6 15 L17 6 M6 15 L19 21"/></svg><span>это №${O.number}, смена ${BEST.n}: ${mmss(BEST.sec)} на льду</span></p>
         </div>
       </div>
     </section>
@@ -207,9 +210,9 @@
         ${perHead("2-й период", "how-t", "Ты не хочешь&nbsp;— и не надо")}
         <div class="two">
           <div class="pain"><h3 class="hand">Не хочешь</h3>
-            <ul><li>Перематывать два часа трансляции</li><li>Искать себя среди двадцати игроков</li><li>Гадать, сколько ты на самом деле играл</li><li>Резать видео для сторис руками</li></ul></div>
+            <ul><li>Перематывать два часа трансляции</li><li>Искать себя среди двадцати игроков</li><li>Гадать, сколько ты на самом деле играл</li></ul></div>
           <div class="solve"><h3 class="hand">Поэтому ${esc(B.name)}</h3>
-            <ul><li>Ссылка и номер — минута</li><li>Каждая смена — отдельное видео</li><li>Время на льду до секунды по табло</li><li>Ролик 9:16, камера ведёт за тобой</li></ul></div>
+            <ul><li>Ссылка и номер — минута</li><li>Каждая смена — отдельное видео</li><li>Время на льду до секунды по табло</li></ul></div>
         </div>
         <div class="wb" data-draw>
           <svg class="wb-path" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true">
@@ -220,7 +223,7 @@
           <ol class="steps">
             <li style="--i:0"><span class="u step-n" aria-hidden="true">1</span><h3>Пришли ссылку и номер</h3><p>Трансляция с VK Видео, YouTube или Rutube, номер на спине и цвет формы. Можно сразу несколько игроков.</p></li>
             <li style="--i:1"><span class="u step-n" aria-hidden="true">2</span><h3>${esc(B.name)} ищет тебя в записи</h3><p>ИИ находит номер и цвет формы в каждом кадре, потом человек пересматривает каждую смену.</p></li>
-            <li style="--i:2"><span class="u step-n" aria-hidden="true">3</span><h3>Видео приходят в Telegram</h3><p>Как только всё проверено: смены, время на льду, голы при тебе и ролик 9:16.</p></li>
+            <li style="--i:2"><span class="u step-n" aria-hidden="true">3</span><h3>Видео приходят в Telegram</h3><p>Как только всё проверено: смены, время на льду и голы при тебе.</p></li>
           </ol>
         </div>
       </div>
@@ -299,7 +302,7 @@
         </div>
       </section>
 
-      <section class="band ice" aria-label="Период и ролик">
+      <section class="band ice" aria-label="Период по секундам">
         <div class="wrap r-grid">
           <div class="r-main tile">
             <div class="blk-head"><h2 class="u blk-title">Период по секундам</h2><span>Нажми на полосу, чтобы выбрать смену</span></div>
@@ -307,10 +310,9 @@
             <div class="picked" id="picked">${pickedCard(n)}</div>
           </div>
           <aside class="r-side tile tile--dark">
-            <h2 class="u blk-title">Ролик с обводкой</h2>
-            <div class="phone">${reelBox()}</div>
-            <span class="reel-mark"><i></i>Неоновая обводка, прожектор, ${O.media.reelLen} с</span>
-            <div class="actions"><a class="btn btn--white" href="${O.media.reel}" download="smeny-${O.number}-rolik.mp4">${ICON.down}Скачать</a><button class="btn btn--line" type="button" data-share>${ICON.share}Поделиться</button></div>
+            <h2 class="u blk-title">Все смены одним файлом</h2>
+            <p class="r-side-txt">${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")} подряд, ${mmss(O.media.allLen)}. Скачай себе или отправь тренеру.</p>
+            <div class="actions"><a class="btn btn--white" href="${O.media.all}" download="smeny-${O.number}.mp4">${ICON.down}Скачать</a><button class="btn btn--line" type="button" data-share>${ICON.share}Поделиться</button></div>
           </aside>
         </div>
         <p class="wrap note">Время по табло. Если что-то не так, напиши в Telegram — переделаем без доплаты.</p>
@@ -321,7 +323,7 @@
           <p>${PRICES[1].games} игр за ${rub(PRICES[1].price)} ₽, это ${PRICES[1].per} ₽ за игру. Платишь после результата, пакет действует ${OFFER.packMonths} месяцев.</p>
           <div class="actions"><a class="btn btn--accent" href="#/order">Прислать следующую игру</a><button class="btn btn--line" type="button" data-share>${ICON.share}Скинуть в чат команды</button></div></div>
       </div></section>` : `${line("goal")}${endBand("want", `Это смены №${O.number}. Хочешь так же про себя?`,
-        `<p class="siren-lead">Пришли ссылку на трансляцию своей игры и номер. Как всё будет готово, пришлём в Telegram все твои смены, время на льду и ролик. Игра стоит ${PRICES[0].price} ₽, платишь после результата. Не нашли тебя в записи — не платишь.</p>`)}`}
+        `<p class="siren-lead">Пришли ссылку на трансляцию своей игры и номер. Как всё будет готово, пришлём в Telegram все твои смены и время на льду. Игра стоит ${PRICES[0].price} ₽, платишь после результата. Не нашли тебя в записи — не платишь.</p>`)}`}
     </div>`;
   }
 
@@ -361,7 +363,7 @@
   const onKit = (k) => (["white", "yellow"].includes(k) ? "#000" : "#fff");
   const svcName = (url) => checkUrl(url)?.ok ? checkUrl(url).svc : "";
   const numOk = (n) => /^\d{1,2}$/.test(n) && +n >= 1;
-  /* обводка игрока в ролике — по желанию: «без обводки» или цвет из window.MARKERS */
+  /* обводка игрока в видео смен — по желанию: «без обводки» или цвет из window.MARKERS */
   const HL = [{ key: "none", title: "Без обводки", hex: "" }, ...(window.MARKERS || [])];
   const hlBy = (k) => HL.find((m) => m.key === k) || HL[0];
   const hlName = (k) => k === "none" ? "без обводки" : `${hlBy(k).title.toLowerCase()} эллипс`;
@@ -435,7 +437,7 @@
       <div class="o2-kits" role="group" aria-labelledby="o2-kit-lbl">${kits}</div>
       ${two ? `<p class="o2-hint o2-kit-note">В игре две команды, поэтому в заявке только два цвета формы. Чтобы взять другой цвет, поменяй его у остальных игроков.</p>` : ""}
       <p class="err" id="o2-err-kit" role="alert" hidden>В заявке больше двух цветов формы. В одной игре две команды — оставь два цвета.</p>
-      <span class="o2-lbl" id="o2-hl-lbl">Обводка этого игрока в ролике: <b id="o2-hlname">${hlName(p.marker || "none")}</b></span>
+      <span class="o2-lbl" id="o2-hl-lbl">Обводка этого игрока в видео: <b id="o2-hlname">${hlName(p.marker || "none")}</b></span>
       <div class="o2-hls" id="o2-hls" role="group" aria-labelledby="o2-hl-lbl">${hlHtml(i)}</div>
       <p class="o2-hint">Цветной эллипс под ногами, чтобы игрока сразу было видно. У каждого игрока свой цвет, можно без обводки.</p>
       ${p.howto || p.showHow ? `<div class="o2-f"><label for="o2-how">Приметы</label><input class="o2-in" id="o2-how" data-f="howto" autocomplete="off" enterkeyhint="next" maxlength="120" placeholder="Левша, белый шлем, капитан" value="${esc(p.howto)}"></div>`
@@ -650,7 +652,7 @@
       setTimeout(() => {
         $(".confirm").innerHTML = `<div class="confirm-head"><h2 id="confirm-title">Заявка ушла в Telegram</h2><button class="icon-btn" type="button" data-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
           <p class="cap">Если Telegram не открылся или сообщение не отправилось, напиши <a class="link" href="https://t.me/${esc(B.telegram)}" target="_blank" rel="noopener">@${esc(B.telegram)}</a> и вставь текст заявки.</p>
-          <p>Ответим в Telegram, видео смен и ролик пришлём туда же. На сайте ничего не сохраняется.</p>
+          <p>Ответим в Telegram, видео смен пришлём туда же. На сайте ничего не сохраняется.</p>
           <div class="confirm-actions"><a class="btn btn--accent" href="#/" data-close>На главную</a></div>`;
       }, 400);
     });
@@ -701,7 +703,7 @@
           ${isDone ? (R ? `<a class="st-result" href="${esc(R.url)}" target="_blank" rel="noopener"><span class="sb-l">На льду</span><span class="led st-num">${board(mmss(R.toi))}</span><span>${R.shifts} ${plural(R.shifts, "смена", "смены", "смен")}</span><span class="btn btn--white">Открыть результат</span></a>${R.until ? `<p class="st-keep">Видео хранится до <b>${new Date(R.until * 1000 - 86400000).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</b>. Скачайте его на странице результата, чтобы оно осталось у вас.</p>` : ""}` : `<a class="st-result" href="#/result?own"><span class="sb-l">На льду</span><span class="led st-num">${board(T.toi)}</span><span>${T.shifts} ${plural(T.shifts, "смена", "смены", "смен")}</span><span class="btn btn--white">Открыть результат</span></a>`) : `
           <div class="st-soon" aria-label="Пример того, что придёт">
             <div class="st-soon-reel"><img src="${O.media.reelPoster}" alt="" loading="lazy"><svg viewBox="0 0 90 160" aria-hidden="true"><ellipse cx="45" cy="112" rx="24" ry="7"/></svg><b>№${esc(o.number)}</b></div>
-            <div class="st-soon-txt"><b>Ролик появится здесь</b><span>И цифры игры: время на льду, смены, голы при игроке.</span>
+            <div class="st-soon-txt"><b>Смены появятся здесь</b><span>И цифры игры: время на льду, смены, голы при игроке.</span>
               <div class="st-soon-nums" aria-hidden="true"><span><i data-v="0:00"></i>на льду</span><span><i data-v="00"></i>смен</span><span><i data-v="00 с"></i>средняя</span></div></div>
           </div>
           <div class="st-wait"><span class="st-tg" aria-hidden="true">${ICON.tg}</span><span>Ничего делать не нужно. Мы напишем, как только всё будет готово.</span></div>`}
@@ -782,7 +784,7 @@
     return doc("Публичная оферта на оказание услуг", `Это предложение заключить договор на условиях ниже (статья 437 Гражданского кодекса РФ). Исполнитель: ${who()}.`, [
       ["1. Что делаем", [
         "Разбираем запись трансляции хоккейного матча по ссылке заказчика и находим смены игрока, которого указал заказчик: по номеру на форме и цвету формы.",
-        "Результат: список смен со ссылками на моменты записи, время на льду и другие цифры по игре, видео каждой смены и общий ролик 9:16.",
+        "Результат: список смен со ссылками на моменты записи, время на льду и другие цифры по игре, видео каждой смены и все смены одним видео.",
         "Результат предназначен для личного некоммерческого использования заказчиком.",
       ]],
       ["2. Как заключается договор", [
@@ -879,7 +881,7 @@
 
   /* подгрузка по требованию: админка и демо-заказы нужны только своим экранам */
   const lazy = {};
-  const ASSET_V = "20261128b";                    // та же версия, что ?v= в index.html
+  const ASSET_V = "20261128c";                    // та же версия, что ?v= в index.html
   function need(src) {
     return lazy[src] ||= new Promise((done) => {
       const url = src + "?v=" + ASSET_V;      // версия: после выкладки браузер не берёт старую админку из кэша
